@@ -456,6 +456,105 @@ nav{background:var(--ink);height:52px;display:flex;align-items:center;justify-co
 .obtn{background:var(--blue);color:#fff;border:none;border-radius:9px;font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;padding:.68rem 1.35rem;cursor:pointer;display:flex;align-items:center;gap:.45rem;transition:filter .14s,transform .14s;}
 .obtn:hover{filter:brightness(1.1);transform:translateY(-1px);}
 .obtn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+
+/* ══════════════════════════════════════
+   DAG-VIEW PAGE
+══════════════════════════════════════ */
+.dagpage{padding:1.5rem;max-width:1280px;margin:0 auto;}
+.dagpage-hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1.4rem;}
+.dagpage-hdr h1{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;}
+
+/* Week navigator */
+.weeknav{display:flex;align-items:center;gap:.5rem;}
+.weeknav-btn{background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--ink2);font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;padding:.42rem .85rem;cursor:pointer;transition:all .14s;}
+.weeknav-btn:hover{border-color:var(--blue);color:var(--blue);}
+.weeknav-label{font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700;color:var(--ink);min-width:160px;text-align:center;}
+
+/* Day tab strip */
+.day-strip{display:flex;gap:.45rem;margin-bottom:1.2rem;overflow-x:auto;padding-bottom:.2rem;}
+.day-tab{background:var(--surface);border:1.5px solid var(--border);border-radius:11px;padding:.62rem .95rem;cursor:pointer;text-align:center;min-width:90px;transition:all .16s;flex-shrink:0;}
+.day-tab:hover{border-color:var(--blue);}
+.day-tab.active{border-color:var(--blue);background:var(--bbg);}
+.day-tab.full{border-color:var(--red);background:var(--rbg);}
+.day-tab.empty{opacity:.5;}
+.day-tab-name{font-family:'Syne',sans-serif;font-weight:800;font-size:.82rem;}
+.day-tab-date{font-size:.62rem;color:var(--muted);margin-top:1px;}
+.day-tab-count{font-size:.68rem;font-weight:700;margin-top:.25rem;}
+.day-tab.active .day-tab-name{color:var(--blue);}
+.day-tab.active .day-tab-count{color:var(--blue);}
+.day-tab.full .day-tab-name{color:var(--red);}
+
+/* Day content grid */
+.day-content{display:grid;grid-template-columns:1fr 340px;gap:1.1rem;align-items:start;}
+@media(max-width:900px){.day-content{grid-template-columns:1fr;}}
+
+/* Appointments list */
+.appt-list-wrap{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);}
+.appt-list-hdr{padding:.9rem 1.2rem .7rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.appt-list-title{font-family:'Syne',sans-serif;font-size:.88rem;font-weight:800;}
+.appt-list-meta{font-size:.7rem;color:var(--muted);}
+.appt-list{padding:.6rem .8rem;}
+.appt-row{display:flex;align-items:flex-start;gap:.7rem;padding:.55rem .45rem;border-radius:8px;border-bottom:1px solid var(--border2);transition:background .12s;cursor:default;}
+.appt-row:last-child{border-bottom:none;}
+.appt-row:hover{background:var(--bg);}
+.appt-slot-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.appt-info{flex:1;min-width:0;}
+.appt-name{font-size:.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.appt-addr{font-size:.68rem;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.appt-meta{font-size:.65rem;color:var(--muted);margin-top:2px;}
+.appt-time{font-family:'Syne',sans-serif;font-size:.72rem;font-weight:700;color:var(--ink2);flex-shrink:0;white-space:nowrap;}
+.appt-region{font-size:.6rem;font-weight:700;padding:2px 6px;border-radius:20px;background:var(--bbg);color:var(--blue);flex-shrink:0;align-self:center;}
+.appt-empty{padding:2rem;text-align:center;color:var(--muted);font-size:.78rem;}
+
+/* Slot breakdown in list header */
+.slot-breakdown{display:flex;gap:.4rem;flex-wrap:wrap;padding:.65rem 1.2rem;border-bottom:1px solid var(--border2);background:var(--bg);}
+.sb-pill{display:inline-flex;align-items:center;gap:.3rem;font-size:.66rem;font-weight:600;padding:.22rem .55rem;border-radius:20px;border:1px solid transparent;}
+
+/* Right sidebar: efficiency */
+.eff-sidebar{display:flex;flex-direction:column;gap:.9rem;}
+.eff-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:1.1rem;box-shadow:var(--shadow);}
+.eff-card h3{font-family:'Syne',sans-serif;font-size:.82rem;font-weight:800;margin-bottom:.8rem;}
+
+/* Capacity bar */
+.cap-bar-wrap{margin-bottom:.9rem;}
+.cap-bar-label{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);margin-bottom:.32rem;}
+.cap-bar-track{height:10px;background:var(--border);border-radius:5px;overflow:hidden;}
+.cap-bar-fill{height:100%;border-radius:5px;transition:width .5s ease;}
+
+/* Slot availability per slot */
+.slot-avail-list{display:flex;flex-direction:column;gap:.42rem;}
+.sal-row{display:flex;align-items:center;gap:.55rem;}
+.sal-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.sal-label{font-size:.72rem;font-weight:600;flex:1;color:var(--ink2);}
+.sal-bar{flex:2;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.sal-fill{height:100%;border-radius:3px;}
+.sal-count{font-size:.68rem;font-weight:700;min-width:42px;text-align:right;}
+.sal-count.ok{color:var(--green);}
+.sal-count.warn{color:var(--amber);}
+.sal-count.full{color:var(--red);}
+
+/* Efficiency tips */
+.tip-list{display:flex;flex-direction:column;gap:.52rem;}
+.tip{background:var(--bg);border-radius:9px;padding:.6rem .8rem;font-size:.74rem;line-height:1.55;border-left:3px solid var(--border);}
+.tip.green{border-color:var(--green);background:var(--gbg);}
+.tip.amber{border-color:var(--amber);background:var(--abg);}
+.tip.red{border-color:var(--red);background:var(--rbg);}
+.tip.blue{border-color:var(--blue);background:var(--bbg);}
+
+/* Region cluster map for the day */
+.region-cluster{display:flex;flex-direction:column;gap:.38rem;}
+.rc-row{display:flex;align-items:center;gap:.55rem;font-size:.73rem;}
+.rc-name{flex:1;font-weight:600;}
+.rc-count{font-family:'Syne',sans-serif;font-weight:800;font-size:.82rem;min-width:24px;text-align:right;}
+.rc-bar{flex:2;height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+.rc-fill{height:100%;border-radius:3px;background:var(--blue);}
+
+/* Day map */
+.day-map-wrap{height:220px;border-radius:10px;overflow:hidden;border:1.5px solid var(--border);margin-top:.8rem;}
+#dayMap{height:100%;width:100%;}
+
+/* Loading state */
+.dagloader{display:flex;align-items:center;justify-content:center;padding:3rem;gap:.75rem;color:var(--muted);font-size:.8rem;}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 </style>
@@ -469,6 +568,7 @@ nav{background:var(--ink);height:52px;display:flex;align-items:center;justify-co
     <button class="ntab active" onclick="showPage('planner',this)">📞 Inplannen</button>
     <button class="ntab" onclick="showPage('staff',this)">👥 Medewerkers</button>
     <button class="ntab" onclick="showPage('analytics',this)">📊 Inzichten</button>
+    <button class="ntab" onclick="showPage('dagview',this)">📅 Dagplanning</button>
   </div>
   <div class="nright">
     <div class="apipill"><div class="apiledge" id="apiLed"></div><span id="apiTxt">Niet gekoppeld</span></div>
@@ -742,6 +842,37 @@ nav{background:var(--ink);height:52px;display:flex;align-items:center;justify-co
 </div>
 </div>
 
+
+<!-- ══════════ PAGE: DAGPLANNING ══════════ -->
+<div class="page" id="page-dagview">
+<div class="dagpage">
+  <div class="dagpage-hdr">
+    <div>
+      <h1>📅 Dagplanning</h1>
+      <p style="font-size:.76rem;color:var(--muted);margin-top:.15rem">Bekijk per dag hoe efficiënt de planning is en waar ruimte zit.</p>
+    </div>
+    <div class="weeknav">
+      <button class="weeknav-btn" onclick="dagWeekNav(-1)">← Vorige</button>
+      <div class="weeknav-label" id="dagWeekLabel">Week laden…</div>
+      <button class="weeknav-btn" onclick="dagWeekNav(1)">Volgende →</button>
+      <button class="weeknav-btn" onclick="refreshDagView()" style="border-color:var(--green);color:var(--green)">↻ Ververs</button>
+    </div>
+  </div>
+
+  <div id="dagLoadingBar" class="dagloader" style="display:none">
+    <div class="spin"></div><span>Afspraken ophalen…</span>
+  </div>
+
+  <!-- Day tab strip: Ma t/m Za -->
+  <div class="day-strip" id="dayStrip"></div>
+
+  <!-- Day content: appointments + efficiency sidebar -->
+  <div class="day-content" id="dayContent">
+    <div class="dagloader">Selecteer een dag hierboven.</div>
+  </div>
+</div>
+</div>
+
 <!-- MODAL -->
 <div class="moverlay" id="moverlay">
   <div class="modal">
@@ -918,6 +1049,7 @@ function showPage(id,btn){
   if(id==='staff')renderStaffPage();
   if(id==='analytics'){renderAnalytics();if(ST.apiKey)loadAnalyticsData();}
   if(id==='planner'&&mainMap)setTimeout(()=>mainMap.invalidateSize(),120);
+  if(id==='dagview')showPage_dagview();
 }
 function toggleDrawer(){document.getElementById('drawer').classList.toggle('open');}
 function saveSettings(connect=false){
@@ -1221,18 +1353,39 @@ async function parseOrders(orders,monday){
     const idx=Math.round((new Date(ds)-monday)/86400000);
     if(idx<0||idx>4)continue;
 
-    // Time windows: inside data{}
-    const tws=d.timeWindows||d.time_windows||o.timeWindows||[];
-    const tw=tws[0]||d.timeWindow||o.timeWindow||null;
+    // Time windows: inside data{} — handle multiple formats
+    const tws=d.timeWindows||d.time_windows||o.timeWindows||o.time_windows||[];
+    const tw=Array.isArray(tws)&&tws.length>0?tws[0]:tws||d.timeWindow||o.timeWindow||null;
     let slot=null;
     if(tw){
-      const rawFrom=String(tw.timeFrom||tw.time_from||tw.from||tw.start||'').replace(':','').padStart(4,'0');
+      // tw can be: {timeFrom:"0900",timeTo:"1100"} or {timeFrom:"09:00"} or {from:540} (minutes) or number
+      let rawFrom=tw.timeFrom||tw.time_from||tw.from||tw.start||tw[0]||'';
+      if(typeof rawFrom==='number'){
+        // minutes since midnight
+        const hh=Math.floor(rawFrom/60);
+        rawFrom=String(hh).padStart(2,'0')+'00';
+      } else {
+        rawFrom=String(rawFrom).replace(':','').replace(/\D/g,'').padStart(4,'0');
+      }
       const h=parseInt(rawFrom.slice(0,2));
       if(h===9)slot='09-11';
       else if(h===10)slot='10-12';
       else if(h===13)slot='13-15';
       else if(h===17)slot='17-19';
       else if(h===20)slot='20-22';
+    }
+    // Fallback: try scheduledAt time if no timeWindow matched
+    if(!slot){
+      const sAt=d.scheduledAt||d.scheduled_at||d.scheduledStartTime||o.scheduledAt||'';
+      if(sAt){
+        const tPart=sAt.includes('T')?sAt.split('T')[1]:'';
+        const h=tPart?parseInt(tPart.slice(0,2)):NaN;
+        if(h===9)slot='09-11';
+        else if(h===10)slot='10-12';
+        else if(h===13)slot='13-15';
+        else if(h===17)slot='17-19';
+        else if(h===20)slot='20-22';
+      }
     }
 
     // Coordinates — location may have lat/lng or just address string
@@ -1408,7 +1561,7 @@ async function doAdvise(){
   document.getElementById('advBtn').disabled=true;
   const monday=getMonday(selWeekOff());
   const callerRegion=getRegion(addrSelected?addrSelected.pc:pc,ST.clusterMethod);
-  dbg('doAdvise',{name,pc,region:callerRegion,slot:prefSlot});
+  dbg('doAdvise',{name,pc,region:callerRegion,slot:prefSlot,slotsByGroup:JSON.stringify(slotsByGroup),freeSlotActive});
   let byDay=await fetchWeekAppts(monday);
   if(!byDay){byDay={};DAYS.forEach(d=>byDay[d]=[]);err.textContent='ℹ API niet bereikbaar — advies op basis van rooster enkel';err.classList.add('on');}
   plotApptsOnMap(byDay,monday);
@@ -1718,23 +1871,299 @@ async function testApiCall(){
   }catch(e){dbg('TEST FOUT',e.message);}
 }
 
-// Patch toggleDebug to show/hide
-function toggleDebug(){
-  const p=document.getElementById('debugPanel');
-  const isOpen=p.style.display==='flex';
-  p.style.display=isOpen?'none':'flex';
-  if(!isOpen){
-    const log=p.querySelector('.debug-log');
-    log.innerHTML='';
-    debugLog.slice(-60).forEach(e=>{
-      const line=document.createElement('div');
-      line.style.cssText='font-size:.7rem;padding:.15rem 0;border-bottom:1px solid rgba(255,255,255,.04);color:#c9d1d9;';
-      line.innerHTML=`<span style="opacity:.4">${e.ts}</span> <span style="color:#3effc4">${e.msg}</span>${e.data?' <span style="opacity:.4;font-size:.63rem">'+JSON.stringify(e.data).slice(0,150)+'</span>':''}`;
-      log.appendChild(line);
-    });
-    log.scrollTop=9999;
-  }
+// toggleDebug defined above
+
+
+// ══════════════════════════════════════════════
+// DAG-VIEW (Dagplanning tabblad)
+// ══════════════════════════════════════════════
+let dagOffset=0, dagByDay=null, activeDagDay=null, dagMap=null, dagMapMarkers=[];
+
+async function showPage_dagview(){
+  if(!dagByDay)await refreshDagView();
+  else renderDayStrip();
 }
+
+async function refreshDagView(){
+  document.getElementById('dagLoadingBar').style.display='flex';
+  document.getElementById('dayContent').innerHTML='<div class="dagloader"><div class="spin"></div><span>Laden…</span></div>';
+  const monday=getMonday(dagOffset);
+  document.getElementById('dagWeekLabel').textContent=wkLabel(monday);
+
+  if(ST.apiKey){
+    dagByDay=await fetchWeekAppts(monday);
+  }
+  if(!dagByDay){dagByDay={};DAYS.forEach(d=>dagByDay[d]=[]);}
+  document.getElementById('dagLoadingBar').style.display='none';
+  renderDayStrip();
+  // Auto-select first day with most appointments
+  const bestDay=DAYS.slice().sort((a,b)=>(dagByDay[b]||[]).length-(dagByDay[a]||[]).length)[0]||'ma';
+  selectDagDay(bestDay);
+}
+
+function dagWeekNav(dir){
+  dagOffset+=dir;dagByDay=null;
+  refreshDagView();
+}
+
+// Include Saturday (za) as well
+const DAG_DAYS=['ma','di','wo','do','vr','za'];
+const DAG_DAYNL={ma:'Maandag',di:'Dinsdag',wo:'Woensdag',do:'Donderdag',vr:'Vrijdag',za:'Zaterdag'};
+const DAG_DAYSH={ma:'Ma',di:'Di',wo:'Wo',do:'Do',vr:'Vr',za:'Za'};
+
+function renderDayStrip(){
+  const monday=getMonday(dagOffset);
+  const strip=document.getElementById('dayStrip');
+  strip.innerHTML=DAG_DAYS.map((d,i)=>{
+    const date=new Date(monday);date.setDate(date.getDate()+i);
+    const dateStr=date.toLocaleDateString('nl-NL',{day:'numeric',month:'short'});
+    // For saturday use index 5
+    const appts=(dagByDay[d]||dagByDay[DAYS[i]]||[]);
+    const count=appts.length;
+    const monday2=getMonday(dagOffset);
+    const avail=getAvailStaff(DAYS[Math.min(i,4)],date);
+    const cap=avail.reduce((s,w)=>s+getDayCap(w,DAYS[Math.min(i,4)]),0);
+    const isFull=cap>0&&count>=cap;
+    const isEmpty=count===0;
+    const cls=isFull?'full':isEmpty?'empty':'';
+    const countCol=isFull?'var(--red)':count>0?'var(--green)':'var(--muted)';
+    return`<div class="day-tab ${cls} ${activeDagDay===d?'active':''}" onclick="selectDagDay('${d}')">
+      <div class="day-tab-name">${DAG_DAYSH[d]||DAYSH[d]||d}</div>
+      <div class="day-tab-date">${dateStr}</div>
+      <div class="day-tab-count" style="color:${countCol}">${count} afspraken</div>
+    </div>`;
+  }).join('');
+}
+
+function selectDagDay(d){
+  activeDagDay=d;
+  renderDayStrip(); // update active
+  renderDayContent(d);
+}
+
+function renderDayContent(d){
+  const monday=getMonday(dagOffset);
+  const dayIdx=DAG_DAYS.indexOf(d);
+  const coreDayIdx=Math.min(dayIdx,4); // za maps to same staff as vr for capacity
+  const coreDay=DAYS[coreDayIdx];
+  const date=new Date(monday);date.setDate(date.getDate()+dayIdx);
+  const dateStr=date.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+  const appts=dagByDay[d]||dagByDay[coreDay]||[];
+  const avail=getAvailStaff(coreDay,date);
+  const cap=avail.reduce((s,w)=>s+getDayCap(w,coreDay),0);
+  const used=appts.length;
+  const pct=cap>0?Math.round(Math.min(100,used/cap*100)):0;
+
+  // Slot counts
+  const slotCounts={};
+  Object.keys(SLOTS).forEach(k=>{slotCounts[k]=0;});
+  slotCounts['onbekend']=0;
+  appts.forEach(a=>{if(a.slot&&slotCounts[a.slot]!==undefined)slotCounts[a.slot]++;else slotCounts['onbekend']++;});
+
+  // Region clusters
+  const regionCounts={};
+  appts.forEach(a=>{if(!regionCounts[a.region])regionCounts[a.region]=0;regionCounts[a.region]++;});
+  const sortedRegions=Object.entries(regionCounts).sort((a,b)=>b[1]-a[1]);
+  const maxRegionCount=sortedRegions[0]?.[1]||1;
+
+  // Efficiency tips
+  const tips=generateTips(appts,avail,cap,used,pct,slotCounts,sortedRegions,coreDay,date);
+
+  // Appointment rows sorted by slot time
+  const slotOrder={'09-11':0,'10-12':1,'13-15':2,'17-19':3,'20-22':4,null:5,'onbekend':5};
+  const sorted=[...appts].sort((a,b)=>(slotOrder[a.slot]??5)-(slotOrder[b.slot]??5));
+
+  // Slot breakdown pills
+  const sbPills=Object.entries(SLOTS).map(([k,s])=>{
+    const cnt=slotCounts[k];
+    if(cnt===0)return'';
+    return`<span class="sb-pill" style="background:${s.color}22;border-color:${s.color}55;color:${s.color}">
+      <span style="width:7px;height:7px;border-radius:50%;background:${s.color};display:inline-block"></span>
+      ${s.label}: ${cnt}
+    </span>`;
+  }).join('')+(slotCounts['onbekend']>0?`<span class="sb-pill" style="background:var(--bg);border-color:var(--border);color:var(--muted)">Onbekend tijdslot: ${slotCounts['onbekend']}</span>`:'');
+
+  // Appt list HTML
+  const apptListHtml=sorted.length===0
+    ?`<div class="appt-empty">Geen afspraken op ${DAG_DAYNL[d]||DAYNL[d]||d}</div>`
+    :sorted.map(a=>{
+      const sc=a.slot&&SLOTS[a.slot]?SLOTS[a.slot]:{label:a.slot||'Onbekend',color:'#999'};
+      return`<div class="appt-row">
+        <div class="appt-slot-dot" style="background:${sc.color}"></div>
+        <div class="appt-info">
+          <div class="appt-name">${a.name||'Afspraak'}</div>
+          <div class="appt-addr">${a.address||a.postalCode||'–'}</div>
+          <div class="appt-meta">${a.postalCode?a.postalCode+' · ':''}</div>
+        </div>
+        <div class="appt-time">${sc.label}</div>
+        <div class="appt-region">${a.region||'–'}</div>
+      </div>`;
+    }).join('');
+
+  // Slot avail rows
+  const slotAvailHtml=Object.entries(SLOTS).map(([k,s])=>{
+    const staffCap=avail.length; // concurrent slots possible
+    const taken=slotCounts[k];
+    const free=Math.max(0,staffCap-taken);
+    const fillPct=staffCap>0?Math.round(taken/staffCap*100):100;
+    const cls=free===0?'full':free<=1?'warn':'ok';
+    return`<div class="sal-row">
+      <div class="sal-dot" style="background:${s.color}"></div>
+      <div class="sal-label">${s.label}</div>
+      <div class="sal-bar"><div class="sal-fill" style="width:${fillPct}%;background:${s.color}88"></div></div>
+      <div class="sal-count ${cls}">${free>0?free+' vrij':'Vol'}</div>
+    </div>`;
+  }).join('');
+
+  // Region cluster HTML
+  const regionHtml=sortedRegions.slice(0,6).map(([r,cnt])=>{
+    const w=Math.round(cnt/maxRegionCount*100);
+    return`<div class="rc-row">
+      <div class="rc-name">${r}</div>
+      <div class="rc-bar"><div class="rc-fill" style="width:${w}%"></div></div>
+      <div class="rc-count">${cnt}</div>
+    </div>`;
+  }).join('')||(sortedRegions.length===0?'<div style="font-size:.72rem;color:var(--muted)">Geen afspraken</div>':'');
+
+  // Cap bar color
+  const capCol=pct>=90?'var(--red)':pct>=65?'var(--amber)':'var(--green)';
+
+  const html=`
+    <!-- LEFT: appointment list -->
+    <div class="appt-list-wrap">
+      <div class="appt-list-hdr">
+        <div>
+          <div class="appt-list-title">${DAG_DAYNL[d]||DAYNL[d]||d} — ${dateStr}</div>
+          <div class="appt-list-meta">${used} afspraken · ${avail.length} medewerkers · ${cap} totale capaciteit</div>
+        </div>
+      </div>
+      ${sbPills?`<div class="slot-breakdown">${sbPills}</div>`:''}
+      <div class="appt-list">${apptListHtml}</div>
+    </div>
+
+    <!-- RIGHT: efficiency sidebar -->
+    <div class="eff-sidebar">
+
+      <!-- Capacity -->
+      <div class="eff-card">
+        <h3>⚡ Dagcapaciteit</h3>
+        <div class="cap-bar-wrap">
+          <div class="cap-bar-label">
+            <span>${used} ingepland</span>
+            <span style="font-weight:700;color:${capCol}">${pct}%</span>
+          </div>
+          <div class="cap-bar-track"><div class="cap-bar-fill" style="width:${pct}%;background:${capCol}"></div></div>
+          <div style="font-size:.66rem;color:var(--muted);margin-top:.3rem">${cap>0?`${cap-used} plekken beschikbaar`:'Geen medewerkers beschikbaar'}</div>
+        </div>
+        <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.5rem">Tijdslot beschikbaarheid</div>
+        <div class="slot-avail-list">${slotAvailHtml}</div>
+      </div>
+
+      <!-- Region clusters -->
+      <div class="eff-card">
+        <h3>📍 Regio clustering</h3>
+        <div class="region-cluster">${regionHtml}</div>
+        ${sortedRegions.length>1?`<div style="font-size:.68rem;color:var(--muted);margin-top:.65rem">Clustergrootte: <strong style="color:var(--ink)">${(used/sortedRegions.length).toFixed(1)}x</strong> gem. afspraken per regio</div>`:''}
+      </div>
+
+      <!-- Tips -->
+      <div class="eff-card">
+        <h3>💡 Efficiëntietips</h3>
+        <div class="tip-list">${tips.map(t=>`<div class="tip ${t.type}">${t.text}</div>`).join('')}</div>
+      </div>
+
+      <!-- Medewerkers vandaag -->
+      <div class="eff-card">
+        <h3>👥 Medewerkers vandaag</h3>
+        ${avail.length===0
+          ?'<div style="font-size:.74rem;color:var(--muted)">Geen medewerkers ingepland.</div>'
+          :avail.map(s=>{
+            const sc=s.schedule&&s.schedule[coreDay];
+            const cap1=getDayCap(s,coreDay);
+            const assigned=appts.filter(a=>a.assignedTo===s.name||a.driver===s.name).length;
+            return`<div style="display:flex;align-items:center;gap:.55rem;padding:.38rem 0;border-bottom:1px solid var(--border2)">
+              <div style="width:28px;height:28px;border-radius:50%;background:${s.color};display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:.72rem;color:#fff;flex-shrink:0">${s.name.charAt(0)}</div>
+              <div style="flex:1">
+                <div style="font-size:.76rem;font-weight:700">${s.name}</div>
+                <div style="font-size:.64rem;color:var(--muted)">${sc?sc.start+'–'+sc.end:''} · max ${cap1} afspraken</div>
+              </div>
+            </div>`;
+          }).join('')}
+      </div>
+
+    </div>`;
+
+  document.getElementById('dayContent').innerHTML=html;
+
+  // Init/update day map
+  initDayMap(appts, date);
+}
+
+function generateTips(appts,avail,cap,used,pct,slotCounts,sortedRegions,day,date){
+  const tips=[];
+  if(avail.length===0){tips.push({type:'red',text:'⚠ Geen medewerkers beschikbaar op deze dag. Controleer het rooster.'});return tips;}
+  if(pct===0)tips.push({type:'amber',text:'📭 Nog geen afspraken ingepland. Volledig beschikbaar voor nieuwe bellers.'});
+  else if(pct<30)tips.push({type:'blue',text:`📈 Lage bezetting (${pct}%). Er is veel ruimte — prioriteit om afspraken in deze regio's in te plannen.`});
+  else if(pct>=90)tips.push({type:'red',text:`🔴 Bijna vol (${pct}%). Weinig ruimte voor nieuwe afspraken. Overweeg capaciteit uit te breiden.`});
+  else if(pct>=70)tips.push({type:'amber',text:`🟡 Goede bezetting (${pct}%). Nog enkele plekken beschikbaar.`});
+  else tips.push({type:'green',text:`✅ Gezonde bezetting (${pct}%). Ruimte voor ${cap-used} extra afspraken.`});
+
+  // Slot tips
+  const filledSlots=Object.entries(slotCounts).filter(([k,v])=>k!=='onbekend'&&v>0).length;
+  const emptySlots=Object.keys(SLOTS).filter(k=>slotCounts[k]===0);
+  if(emptySlots.length>0&&used>0)tips.push({type:'blue',text:`⏰ Lege tijdsloten: <strong>${emptySlots.map(k=>SLOTS[k].label).join(', ')}</strong>. Ideaal om bellers met deze voorkeur in te plannen.`});
+
+  // Unknown slot warning
+  if(slotCounts['onbekend']>0)tips.push({type:'amber',text:`🕐 ${slotCounts['onbekend']} afspraken hebben geen tijdslot in OptimoRoute. Voeg tijdvensters toe voor betere clustering.`});
+
+  // Cluster tips
+  if(sortedRegions.length>0){
+    const topRegion=sortedRegions[0];
+    if(topRegion[1]>=3)tips.push({type:'green',text:`🎯 Goede clustering: <strong>${topRegion[1]} afspraken</strong> in regio <strong>${topRegion[0]}</strong>. Voeg meer toe in deze regio voor maximale efficiëntie.`});
+    if(sortedRegions.length>=4&&used>0)tips.push({type:'amber',text:`📍 ${sortedRegions.length} verschillende regio's vandaag. Minder regio's = minder rijkilometers.`});
+  }
+  if(tips.length===0)tips.push({type:'green',text:'✅ Planning ziet er goed uit voor deze dag!'});
+  return tips;
+}
+
+function initDayMap(appts, date){
+  // Destroy old map if exists
+  if(dagMap){try{dagMap.remove();}catch(e){}dagMap=null;dagMapMarkers=[];}
+  // Create day map container dynamically after render
+  setTimeout(()=>{
+    const sidebar=document.querySelector('.eff-sidebar');
+    if(!sidebar)return;
+    // Add map to first eff-card
+    const existingMap=document.getElementById('dayMap');
+    if(!existingMap){
+      const wrap=document.createElement('div');wrap.className='day-map-wrap';
+      wrap.innerHTML='<div id="dayMap"></div>';
+      const firstCard=sidebar.querySelector('.eff-card');
+      if(firstCard)firstCard.appendChild(wrap);
+    }
+    const mapEl=document.getElementById('dayMap');
+    if(!mapEl)return;
+    dagMap=L.map('dayMap',{center:[52.2,5.3],zoom:7,zoomControl:false,attributionControl:false});
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(dagMap);
+    const coords=[];
+    appts.forEach(a=>{
+      let lat=a.lat,lng=a.lng;
+      if((!lat||!lng)&&a.postalCode&&validPC(a.postalCode)){[lat,lng]=pcToLL(a.postalCode);}
+      if(!lat||!lng)return;
+      const col=slotColor(a.slot);
+      const m=L.circleMarker([lat,lng],{radius:7,fillColor:col,color:'#fff',weight:1.5,fillOpacity:.9}).addTo(dagMap);
+      const sc=a.slot&&SLOTS[a.slot]?SLOTS[a.slot]:{label:'Onbekend'};
+      m.bindPopup(`<div style="font-family:'Epilogue',sans-serif;font-size:12px;line-height:1.5">
+        <strong>${a.name||'Afspraak'}</strong><br>🕐 ${sc.label}<br>📍 ${a.address||a.postalCode||''}
+      </div>`);
+      coords.push([lat,lng]);dagMapMarkers.push(m);
+    });
+    if(coords.length>1){try{dagMap.fitBounds(coords,{padding:[15,15],maxZoom:12});}catch(e){}}
+    else if(coords.length===1)dagMap.setView(coords[0],11);
+  },150);
+}
+
 
 </script>
 <!-- DEBUG PANEL -->
