@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PlanSlim — Slimmer Inplannen</title>
+<title>PlanSlim v4 — Slimmer Inplannen</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Epilogue:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -59,9 +59,10 @@ nav{background:var(--ink);height:52px;display:flex;align-items:center;justify-co
 /* ════════════════════════════════
    PAGE 1 — PLANNER
 ════════════════════════════════ */
-.plan-layout{display:grid;grid-template-columns:400px 1fr;min-height:calc(100vh - 52px);}
+.plan-layout{display:grid;grid-template-columns:420px 1fr;min-height:calc(100vh - 52px);}
 .lpanel{background:var(--surface);border-right:1px solid var(--border);padding:1.6rem 1.4rem;display:flex;flex-direction:column;gap:1.4rem;overflow-y:auto;}
 .rpanel{padding:1.6rem 1.4rem;overflow-y:auto;display:flex;flex-direction:column;gap:1.2rem;}
+.rpanel-right{overflow:hidden;display:flex;flex-direction:column;}
 
 .flabel{font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.38rem;display:block;}
 .finput{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:9px;color:var(--ink);font-family:'Epilogue',sans-serif;font-size:.88rem;padding:.6rem .9rem;outline:none;transition:border-color .18s;}
@@ -209,6 +210,78 @@ nav{background:var(--ink);height:52px;display:flex;align-items:center;justify-co
 .addico{font-size:1.7rem;opacity:.28;}
 .addlbl{font-size:.78rem;font-weight:600;color:var(--muted);}
 
+
+/* ══ ADDRESS AUTOCOMPLETE ══ */
+.addr-wrap{position:relative;}
+.addr-dropdown{position:absolute;top:calc(100% + 2px);left:0;right:0;background:var(--surface);border:1.5px solid var(--blue);border-top:1px solid var(--border2);border-radius:0 0 10px 10px;box-shadow:var(--shadow-lg);z-index:350;max-height:210px;overflow-y:auto;display:none;}
+.addr-dropdown.open{display:block;}
+.addr-opt{padding:.58rem .9rem;font-size:.8rem;cursor:pointer;border-bottom:1px solid var(--border2);transition:background .1s;line-height:1.45;outline:none;}
+.addr-opt:last-child{border-bottom:none;}
+.addr-opt:hover,.addr-opt:focus{background:var(--bbg);}
+.addr-opt strong{display:block;font-weight:600;color:var(--ink);}
+.addr-opt span{font-size:.7rem;color:var(--muted);}
+.addr-searching{padding:.7rem .9rem;font-size:.76rem;color:var(--muted);display:flex;align-items:center;gap:.5rem;}
+.addr-confirmed{background:var(--gbg);border:1.5px solid var(--gbr);border-radius:9px;padding:.48rem .85rem;font-size:.74rem;color:var(--green);display:none;align-items:center;gap:.5rem;margin-top:.3rem;}
+.addr-confirmed.show{display:flex;}
+.addr-change{margin-left:auto;background:none;border:none;color:var(--green);font-size:.7rem;font-weight:700;cursor:pointer;text-decoration:underline;}
+
+/* ══ TIME SLOTS ══ */
+.morning-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--amber);margin-bottom:.3rem;display:block;}
+.morning-opts{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.45rem;}
+.slots-grid{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;}
+.slot-btn{background:var(--bg);border:2px solid var(--border);border-radius:10px;padding:.58rem .72rem;cursor:pointer;text-align:left;transition:all .15s;position:relative;width:100%;}
+.slot-btn:hover{border-color:var(--blue);background:var(--bbg);}
+.slot-btn.sel{border-color:var(--blue);background:var(--bbg);}
+.slot-btn.taken{border-color:var(--border);background:#fafafa;opacity:.5;cursor:not-allowed;}
+.slot-btn.taken::after{content:'Vol';position:absolute;top:5px;right:7px;font-size:.56rem;font-weight:700;color:var(--muted);background:var(--border2);border-radius:4px;padding:1px 5px;}
+.morning-opts .slot-btn{border-color:var(--amber);background:var(--abg);}
+.morning-opts .slot-btn.sel{border-color:var(--amber);box-shadow:0 0 0 3px rgba(176,116,0,.12);}
+.slot-time{font-family:'Syne',sans-serif;font-weight:700;font-size:.86rem;color:var(--ink);}
+.morning-opts .slot-time{color:var(--amber);}
+.slot-sub{font-size:.65rem;color:var(--muted);margin-top:2px;}
+.slot-count{font-size:.63rem;font-weight:600;color:var(--green);margin-top:2px;}
+.slot-btn.sel .slot-time{color:var(--blue);}
+.morning-opts .slot-btn.sel .slot-time{color:var(--amber);}
+
+/* Free slot */
+.free-slot-wrap{background:var(--rbg);border:1.5px solid var(--rbr);border-radius:10px;padding:.7rem .95rem;margin-top:.5rem;}
+.free-slot-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:.5rem;}
+.free-slot-title{font-size:.73rem;font-weight:700;color:var(--red);flex:1;}
+.free-slot-toggle{width:34px;height:19px;background:var(--border);border-radius:10px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;}
+.free-slot-toggle.on{background:var(--red);}
+.free-slot-toggle::after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+.free-slot-toggle.on::after{transform:translateX(15px);}
+.free-slot-body{margin-top:.65rem;display:none;}
+.free-slot-body.open{display:block;}
+.trow{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;}
+.trow label{font-size:.66rem;color:var(--muted);display:block;margin-bottom:.18rem;}
+
+/* Map strip */
+.map-strip{position:relative;height:300px;flex-shrink:0;border-bottom:1px solid var(--border);}
+.map-strip #mainMap{height:100%;width:100%;}
+.map-loader{position:absolute;inset:0;background:rgba(242,240,235,.82);display:flex;align-items:center;justify-content:center;z-index:500;flex-direction:column;gap:.6rem;font-size:.78rem;color:var(--muted);}
+.map-legend{position:absolute;bottom:9px;left:9px;background:rgba(255,255,255,.93);border:1px solid var(--border);border-radius:8px;padding:.45rem .7rem;font-size:.66rem;z-index:400;display:flex;flex-direction:column;gap:3px;backdrop-filter:blur(4px);}
+.legend-item{display:flex;align-items:center;gap:5px;}
+.legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+
+/* Slot availability overview */
+.slot-avail-grid{padding:.85rem 1.35rem;border-bottom:1px solid var(--border);}
+.sa-title{font-size:.61rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;}
+.sa-row{display:flex;align-items:center;gap:.55rem;margin-bottom:.38rem;font-size:.76rem;}
+.sa-label{min-width:125px;font-weight:600;color:var(--ink2);font-size:.72rem;}
+.sa-pips{display:flex;gap:.22rem;}
+.sa-pip{width:22px;height:22px;border-radius:5px;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.58rem;font-weight:700;}
+.sa-pip.free{background:var(--gbg);border-color:var(--gbr);color:var(--green);}
+.sa-pip.taken{background:#f5f5f5;color:var(--muted);}
+
+/* Best slot badge */
+.bslot{display:inline-block;background:var(--bbg);border:1px solid var(--bbr);border-radius:7px;color:var(--blue);font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;padding:3px 9px;margin-bottom:.55rem;}
+
+/* Right panel layout */
+.rpanel-right{overflow:hidden;display:flex;flex-direction:column;}
+.results-scroll{flex:1;overflow-y:auto;padding:1.35rem;}
+
+
 /* modal */
 .moverlay{position:fixed;inset:0;background:rgba(21,24,43,.44);backdrop-filter:blur(4px);z-index:600;display:none;align-items:center;justify-content:center;padding:1rem;}
 .moverlay.on{display:flex;}
@@ -290,6 +363,99 @@ nav{background:var(--ink);height:52px;display:flex;align-items:center;justify-co
   .comprow{grid-template-columns:1fr;}
   .compvs{display:none;}
 }
+
+/* ══════════════════════════════════════════
+   ADVICE POPUP OVERLAY
+══════════════════════════════════════════ */
+.advice-overlay{position:fixed;inset:0;background:rgba(21,24,43,.52);backdrop-filter:blur(6px);z-index:700;display:none;align-items:flex-end;justify-content:center;padding:0;}
+.advice-overlay.open{display:flex;animation:fadeIn .22s ease;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+
+.advice-sheet{background:var(--surface);border-radius:22px 22px 0 0;width:100%;max-width:780px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 -12px 60px rgba(21,24,43,.22);animation:slideUp .3s cubic-bezier(.22,.68,0,1.2);}
+@keyframes slideUp{from{transform:translateY(60px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+
+/* Sheet handle */
+.sheet-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0;}
+
+/* Sheet header */
+.sheet-hdr{padding:.9rem 1.4rem .7rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.sheet-title{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:800;}
+.sheet-meta{font-size:.72rem;color:var(--muted);}
+.sheet-close{background:var(--bg);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:.88rem;color:var(--muted);transition:background .14s;display:flex;align-items:center;justify-content:center;}
+.sheet-close:hover{background:var(--border);}
+
+/* Tab bar for switching between options */
+.option-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0;padding:0 1.4rem;scrollbar-width:none;}
+.option-tabs::-webkit-scrollbar{display:none;}
+.otab{background:none;border:none;border-bottom:3px solid transparent;padding:.62rem .9rem;cursor:pointer;font-family:'Epilogue',sans-serif;font-size:.76rem;font-weight:600;color:var(--muted);white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:.38rem;flex-shrink:0;}
+.otab:hover{color:var(--ink);}
+.otab.active{border-bottom-color:var(--blue);color:var(--blue);}
+.otab .tab-score{font-size:.58rem;font-weight:700;padding:2px 6px;border-radius:20px;background:var(--bg);}
+.otab.active .tab-score{background:var(--bbg);}
+.otab .tab-badge{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* Option content */
+.option-panels{flex:1;overflow-y:auto;padding:1.2rem 1.4rem;}
+.option-panel{display:none;animation:panelIn .2s ease;}
+.option-panel.active{display:block;}
+@keyframes panelIn{from{opacity:0;transform:translateX(6px);}to{opacity:1;transform:translateX(0);}}
+
+/* Big day hero */
+.day-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.1rem;}
+.day-hero-left{}
+.day-big{font-family:'Syne',sans-serif;font-size:2.6rem;font-weight:800;line-height:1;letter-spacing:-.03em;margin-bottom:.15rem;}
+.day-date{font-size:.82rem;color:var(--muted);margin-bottom:.55rem;}
+.slot-chip{display:inline-flex;align-items:center;gap:.38rem;background:var(--bbg);border:1.5px solid var(--bbr);border-radius:8px;color:var(--blue);font-family:'Syne',sans-serif;font-weight:700;font-size:.88rem;padding:.38rem .85rem;margin-bottom:.55rem;}
+.slot-chip .slot-dot{width:8px;height:8px;border-radius:50%;}
+.day-hero-right{text-align:center;flex-shrink:0;}
+.match-ring{position:relative;width:72px;height:72px;}
+.match-ring svg{transform:rotate(-90deg);}
+.match-ring .ring-bg{fill:none;stroke:var(--border);stroke-width:5;}
+.match-ring .ring-fill{fill:none;stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .6s ease;}
+.match-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;}
+.match-lbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-top:.2rem;}
+
+/* Reason block */
+.reason-block{background:var(--bg);border-left:3px solid var(--green);border-radius:0 8px 8px 0;padding:.7rem 1rem;font-size:.8rem;line-height:1.65;color:var(--ink2);margin-bottom:1.1rem;}
+.reason-block.warn{border-color:var(--amber);}
+.reason-block.bad{border-color:var(--red);}
+
+/* Staff availability chips */
+.staff-chips{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:1.1rem;}
+.staff-chip{display:inline-flex;align-items:center;gap:.4rem;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:.3rem .7rem;font-size:.72rem;font-weight:500;}
+.staff-chip .chip-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.staff-chip .chip-hours{color:var(--muted);font-size:.66rem;}
+
+/* Slot availability mini-table */
+.slot-mini{display:grid;grid-template-columns:repeat(5,1fr);gap:.3rem;margin-bottom:1.1rem;}
+.slot-mini-day{text-align:center;}
+.slot-mini-label{font-size:.6rem;font-weight:700;color:var(--muted);text-transform:uppercase;text-align:center;margin-bottom:.35rem;}
+.slot-mini-pip{height:32px;border-radius:7px;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.66rem;font-weight:700;transition:all .15s;cursor:default;}
+.slot-mini-pip.free{background:var(--gbg);border-color:var(--gbr);color:var(--green);}
+.slot-mini-pip.taken{background:#f7f7f7;color:var(--muted);}
+.slot-mini-pip.here{background:var(--blue);border-color:var(--blue);color:#fff;}
+
+/* Action bar */
+.sheet-actions{padding:.9rem 1.4rem 1.1rem;border-top:1px solid var(--border);display:flex;gap:.6rem;align-items:center;flex-shrink:0;background:var(--surface);}
+.confirm-btn{flex:1;background:var(--ink);color:#fff;border:none;border-radius:11px;font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;padding:.82rem 1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.45rem;transition:transform .14s,box-shadow .14s;box-shadow:var(--shadow-lg);}
+.confirm-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(21,24,43,.18);}
+.confirm-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.next-btn{background:var(--bg);border:1.5px solid var(--border);border-radius:11px;color:var(--ink2);font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;padding:.82rem 1.1rem;cursor:pointer;white-space:nowrap;transition:all .14s;}
+.next-btn:hover{border-color:var(--blue);color:var(--blue);}
+
+/* Confirm step (order form) inside sheet */
+.confirm-panel{display:none;padding:1.2rem 1.4rem;}
+.confirm-panel.active{display:block;}
+.confirm-back{background:none;border:none;color:var(--blue);font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;cursor:pointer;padding:0;margin-bottom:.9rem;display:flex;align-items:center;gap:.3rem;}
+.osuc{background:var(--gbg);border:1px solid var(--gbr);border-radius:8px;color:var(--green);font-size:.76rem;font-weight:600;padding:.58rem .88rem;display:none;margin-bottom:.65rem;}
+.osuc.on{display:block;}
+.oerr{background:var(--rbg);border:1px solid var(--rbr);border-radius:8px;color:var(--red);font-size:.73rem;padding:.52rem .82rem;display:none;margin-bottom:.65rem;}
+.oerr.on{display:block;}
+.ogrid{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:.75rem;}
+.ogrid .full{grid-column:1/-1;}
+.obtn{background:var(--blue);color:#fff;border:none;border-radius:9px;font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;padding:.68rem 1.35rem;cursor:pointer;display:flex;align-items:center;gap:.45rem;transition:filter .14s,transform .14s;}
+.obtn:hover{filter:brightness(1.1);transform:translateY(-1px);}
+.obtn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 </style>
@@ -332,37 +498,126 @@ nav{background:var(--ink);height:52px;display:flex;align-items:center;justify-co
 <!-- ══════════ PAGE: PLANNER ══════════ -->
 <div class="page active" id="page-planner">
 <div class="plan-layout">
+
+  <!-- LEFT INPUT PANEL -->
   <div class="lpanel">
-    <div><span class="flabel">Naam beller</span><input class="finput" id="callerName" placeholder="Jan de Vries" type="text"></div>
-    <div><span class="flabel">Adres beller</span><input class="finput" id="callerAddr" placeholder="Hoofdstraat 12, Utrecht" type="text"></div>
+
+    <div>
+      <span class="flabel">Naam beller</span>
+      <input class="finput" id="callerName" placeholder="Jan de Vries" type="text">
+    </div>
+
+    <!-- ADDRESS AUTOCOMPLETE -->
+    <div>
+      <span class="flabel">Adres beller</span>
+      <div class="addr-wrap">
+        <input class="finput" id="addrInput" placeholder="Straat + huisnummer, Stad" autocomplete="off"
+          oninput="onAddrInput(this.value)" onkeydown="onAddrKey(event)">
+        <div class="addr-dropdown" id="addrDropdown"></div>
+      </div>
+      <div class="addr-confirmed" id="addrConfirmed">
+        <span>✓</span><span id="addrConfirmedText"></span>
+        <button class="addr-change" onclick="resetAddr()">Wijzigen</button>
+      </div>
+    </div>
+
+    <!-- POSTCODE (auto-filled) -->
     <div>
       <span class="flabel">Postcode</span>
-      <input class="finput finput-xl" id="pcInput" placeholder="1234AB" maxlength="7" autocomplete="off" oninput="fmtPC(this)" onkeydown="if(event.key==='Enter')doAdvise()">
-      <div style="font-size:.7rem;color:var(--muted);margin-top:.28rem">4 cijfers + 2 letters</div>
+      <input class="finput finput-xl" id="pcInput" placeholder="1234AB" maxlength="7" autocomplete="off"
+        oninput="fmtPC(this)" onkeydown="if(event.key==='Enter')doAdvise()">
+      <div style="font-size:.67rem;color:var(--muted);margin-top:.22rem">Wordt automatisch ingevuld na adresselectie</div>
     </div>
+
+    <!-- WEEK -->
     <div>
       <span class="flabel">Week</span>
       <div class="wpills" id="weekPills"></div>
     </div>
+
+    <!-- TIME SLOTS -->
     <div>
-      <span class="flabel">Tijdvoorkeur beller (optioneel)</span>
-      <div class="trow">
-        <div><label>Van</label><input class="finput" style="padding:.5rem .75rem" type="time" id="tFrom" value="08:00"></div>
-        <div><label>Tot</label><input class="finput" style="padding:.5rem .75rem" type="time" id="tTo" value="18:00"></div>
+      <span class="flabel">Tijdslot voorkeur beller</span>
+
+      <span class="morning-label">🌅 Ochtend — kies één</span>
+      <div class="morning-opts" id="morningOpts">
+        <button class="slot-btn" data-slot="09-11" onclick="selectSlot(this,'morning')">
+          <div class="slot-time">09:00 – 11:00</div>
+          <div class="slot-sub">Vroeg</div>
+          <div class="slot-count" id="sc-09-11"></div>
+        </button>
+        <button class="slot-btn" data-slot="10-12" onclick="selectSlot(this,'morning')">
+          <div class="slot-time">10:00 – 12:00</div>
+          <div class="slot-sub">Laat</div>
+          <div class="slot-count" id="sc-10-12"></div>
+        </button>
+      </div>
+
+      <div class="slots-grid">
+        <button class="slot-btn" data-slot="13-15" onclick="selectSlot(this,'afternoon')">
+          <div class="slot-time">13:00 – 15:00</div>
+          <div class="slot-sub">Middag</div>
+          <div class="slot-count" id="sc-13-15"></div>
+        </button>
+        <button class="slot-btn" data-slot="17-19" onclick="selectSlot(this,'evening1')">
+          <div class="slot-time">17:00 – 19:00</div>
+          <div class="slot-sub">Vroege avond</div>
+          <div class="slot-count" id="sc-17-19"></div>
+        </button>
+        <button class="slot-btn" data-slot="20-22" onclick="selectSlot(this,'evening2')" style="grid-column:1/-1">
+          <div class="slot-time">20:00 – 22:00</div>
+          <div class="slot-sub">Avond</div>
+          <div class="slot-count" id="sc-20-22"></div>
+        </button>
+      </div>
+
+      <!-- Free slot escape hatch -->
+      <div class="free-slot-wrap">
+        <div class="free-slot-header" onclick="toggleFreeSlot()">
+          <div class="free-slot-title">⚠ Klant past niet in standaard tijden — vrij insturen</div>
+          <div class="free-slot-toggle" id="freeToggle"></div>
+        </div>
+        <div class="free-slot-body" id="freeSlotBody">
+          <div style="font-size:.7rem;color:var(--red);margin-bottom:.55rem;line-height:1.5">Gebruik alleen als geen enkel standaard tijdslot past. Clustering wordt minder nauwkeurig.</div>
+          <div class="trow">
+            <div><label>Van</label><input class="finput" style="padding:.46rem .7rem" type="time" id="freeFrom" value="08:00"></div>
+            <div><label>Tot</label><input class="finput" style="padding:.46rem .7rem" type="time" id="freeTo" value="10:00"></div>
+          </div>
+        </div>
       </div>
     </div>
+
     <div id="planErr" class="errstrip"></div>
     <button class="cbtn" id="advBtn" onclick="doAdvise()">Geef Inplanadvies →</button>
+
   </div>
 
-  <div class="rpanel" id="rpanel">
-    <div class="emptyhint" id="emptyHint">
-      <div class="ico">📞</div>
-      <h3>Klaar voor een beller</h3>
-      <p>Vul postcode in en klik op Inplanadvies.<br>PlanSlim houdt rekening met beschikbare uren,<br>pauzes en regioclustering per medewerker.</p>
+  <!-- RIGHT PANEL: MAP TOP + RESULTS BOTTOM -->
+  <div class="rpanel-right">
+
+    <div class="map-strip">
+      <div id="mainMap"></div>
+      <div class="map-loader" id="mapLoader"><div class="spin"></div><span>Kaart laden…</span></div>
+      <div class="map-legend" id="mapLegend" style="display:none">
+        <div style="font-size:.63rem;font-weight:700;color:var(--ink2);margin-bottom:3px">Tijdsloten</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>09-11 / 10-12</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1e3fd4"></div>13-15</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#6b3fa0"></div>17-19</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#167a5b"></div>20-22</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e74c3c;border:2px solid #fff"></div>Beller</div>
+      </div>
     </div>
-    <div class="loadhint" id="loadHint"><div class="spin"></div><span style="font-size:.8rem">Afspraken ophalen…</span></div>
-    <div id="resultWrap" style="display:none"></div>
+
+    <div class="results-scroll">
+      <div class="emptyhint" id="emptyHint">
+        <div class="ico">📍</div>
+        <h3>Kaart toont bestaande afspraken</h3>
+        <p>Voer adres en tijdslot in.<br>PlanSlim berekent de beste dag op basis van<br>clustering, tijdslotbeschikbaarheid en medewerkers.</p>
+      </div>
+      <div class="loadhint" id="loadHint"><div class="spin"></div><span style="font-size:.78rem">Advies berekenen…</span></div>
+      <div id="resultWrap" style="display:none"></div>
+    </div>
+
   </div>
 </div>
 </div>
@@ -499,22 +754,27 @@ const DAYNL={ma:'Maandag',di:'Dinsdag',wo:'Woensdag',do:'Donderdag',vr:'Vrijdag'
 const DAYSH={ma:'Ma',di:'Di',wo:'Wo',do:'Do',vr:'Vr'};
 const REGIONS=['Noord-Holland','Zuid-Holland','Utrecht','Gelderland','Noord-Brabant','Limburg','Overijssel','Groningen','Friesland','Drenthe','Zeeland','Flevoland'];
 const AVCOLS=['#1e3fd4','#167a5b','#b03030','#b07400','#6b3fa0','#0c7a8a','#be185d','#15803d'];
-const APPT_DUR_MIN=120; // 2 hours
 
-// Default schedule per day
-const DEFAULT_DAY_SCHED={active:true,start:'08:00',end:'17:00',breakStart:'12:00',breakEnd:'13:00',maxAppts:4};
+const SLOTS={
+  '09-11':{label:'09:00–11:00',from:'09:00',to:'11:00',color:'#f59e0b',group:'morning'},
+  '10-12':{label:'10:00–12:00',from:'10:00',to:'12:00',color:'#f59e0b',group:'morning'},
+  '13-15':{label:'13:00–15:00',from:'13:00',to:'15:00',color:'#1e3fd4',group:'afternoon'},
+  '17-19':{label:'17:00–19:00',from:'17:00',to:'19:00',color:'#6b3fa0',group:'evening1'},
+  '20-22':{label:'20:00–22:00',from:'20:00',to:'22:00',color:'#167a5b',group:'evening2'},
+};
+const APPT_DUR_MIN=120;
+const DEFAULT_DAY={active:true,start:'08:00',end:'17:00',breakStart:'12:00',breakEnd:'13:00',maxAppts:4};
 
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-let ST={
-  staff:[],       // {id,name,role,color, schedule:{ma:{active,start,end,breakStart,breakEnd,maxAppts},...}, regions:[]}
-  vacations:[],   // {staffId,from,to}
-  apiKey:'',
-  clusterMethod:'postal2',
-  analytics:{weeks:[], regions:{}} // cached analytics data
-};
-let cachedAppts=null, lastWeekKey=null, rMapInst=null;
+let ST={staff:[],vacations:[],apiKey:'',clusterMethod:'postal2',analytics:{regions:{}}};
+let cachedAppts=null,lastWeekKey=null;
+let mainMap=null,mapMarkers=[],callerMarker=null;
+let slotsByGroup={morning:null,afternoon:null,evening1:null,evening2:null};
+let freeSlotActive=false;
+let addrSelected=null;
+let addrTimer=null;
 let charts={};
 
 // ══════════════════════════════════════════════
@@ -523,18 +783,16 @@ let charts={};
 window.addEventListener('DOMContentLoaded',()=>{
   loadST();
   renderWeekPills();
-  document.getElementById('pcInput').focus();
+  initMainMap();
+  document.getElementById('callerName').focus();
 });
 
 // ══════════════════════════════════════════════
 // PERSIST
 // ══════════════════════════════════════════════
-function saveST(quiet=false){
-  localStorage.setItem('ps3_state',JSON.stringify(ST));
-  if(!quiet)showBanner();
-}
+function saveST(quiet=false){localStorage.setItem('ps4',JSON.stringify(ST));if(!quiet)showBanner();}
 function loadST(){
-  try{const r=localStorage.getItem('ps3_state');if(r)Object.assign(ST,JSON.parse(r));}catch(e){}
+  try{const r=localStorage.getItem('ps4');if(r)Object.assign(ST,JSON.parse(r));}catch(e){}
   document.getElementById('apiKey').value=ST.apiKey||'';
   document.getElementById('clusterMethod').value=ST.clusterMethod||'postal2';
   if(ST.apiKey)setApiSt(true,'Gekoppeld');
@@ -551,14 +809,14 @@ function showPage(id,btn){
   btn.classList.add('active');
   if(id==='staff')renderStaffPage();
   if(id==='analytics'){renderAnalytics();if(ST.apiKey)loadAnalyticsData();}
+  if(id==='planner'&&mainMap)setTimeout(()=>mainMap.invalidateSize(),120);
 }
 function toggleDrawer(){document.getElementById('drawer').classList.toggle('open');}
 function saveSettings(connect=false){
   ST.apiKey=document.getElementById('apiKey').value.trim();
   ST.clusterMethod=document.getElementById('clusterMethod').value;
-  cachedAppts=null;lastWeekKey=null;
-  saveST(true);
-  if(connect&&ST.apiKey){setApiSt(true,'Verbonden');document.getElementById('drawer').classList.remove('open');}
+  cachedAppts=null;lastWeekKey=null;saveST(true);
+  if(connect&&ST.apiKey){setApiSt(true,'Verbonden');document.getElementById('drawer').classList.remove('open');loadWeekApptsAndPlotMap();}
 }
 function setApiSt(ok,txt){
   document.getElementById('apiLed').className='apiledge'+(ok?' on':'');
@@ -566,7 +824,7 @@ function setApiSt(ok,txt){
 }
 
 // ══════════════════════════════════════════════
-// WEEK HELPERS
+// WEEK
 // ══════════════════════════════════════════════
 function getMonday(off=0){const d=new Date();const dy=d.getDay();d.setDate(d.getDate()+(dy===0?-6:1-dy)+off*7);d.setHours(0,0,0,0);return d;}
 function wkLabel(mon){const fr=new Date(mon);fr.setDate(fr.getDate()+4);const o={day:'numeric',month:'short'};return`${mon.toLocaleDateString('nl-NL',o)} – ${fr.toLocaleDateString('nl-NL',o)}`;}
@@ -576,7 +834,7 @@ function renderWeekPills(){
     const mon=getMonday(off);const btn=document.createElement('button');
     btn.className='wpill'+(off===0?' sel':'');btn.dataset.off=off;
     btn.innerHTML=`<strong>${off===0?'Deze week':'Volgende week'}</strong>${wkLabel(mon)}`;
-    btn.onclick=()=>{document.querySelectorAll('.wpill').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');};
+    btn.onclick=()=>{document.querySelectorAll('.wpill').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');cachedAppts=null;lastWeekKey=null;loadWeekApptsAndPlotMap();};
     c.appendChild(btn);
   });
 }
@@ -584,7 +842,7 @@ function selWeekOff(){return parseInt(document.querySelector('.wpill.sel')?.data
 function wkDates(mon){return DAYS.map((d,i)=>{const dt=new Date(mon);dt.setDate(dt.getDate()+i);return{day:d,date:dt};});}
 
 // ══════════════════════════════════════════════
-// POSTCODE
+// POSTCODE / REGION
 // ══════════════════════════════════════════════
 function fmtPC(el){let v=el.value.replace(/\s/g,'').toUpperCase();if(v.length>4)v=v.slice(0,4)+' '+v.slice(4,6);el.value=v;}
 function parsePC(r){return r.replace(/\s/g,'').toUpperCase();}
@@ -602,45 +860,161 @@ function getRegion(pc,m){
   if(n<9000)return'Friesland';if(n<9400)return'Groningen';
   if(n<9700)return'Drenthe';return'Groningen';
 }
-function pcLL(pc){
-  const n=parseInt(pc.slice(0,4));const t=(n-1000)/8999;
-  return{lat:Math.min(53.5,Math.max(51.2,51.35+t*2.1+Math.sin(t*Math.PI*1.5)*.3)),
-         lng:Math.min(7.1,Math.max(3.5,3.85+t*3.0+Math.cos(t*Math.PI)*.5))};
+
+// ══════════════════════════════════════════════
+// ADDRESS AUTOCOMPLETE (OSM Nominatim)
+// ══════════════════════════════════════════════
+function onAddrInput(val){
+  if(addrSelected)return;
+  clearTimeout(addrTimer);
+  const dd=document.getElementById('addrDropdown');
+  if(val.length<4){dd.classList.remove('open');dd.innerHTML='';return;}
+  dd.innerHTML=`<div class="addr-searching"><div class="spin" style="width:13px;height:13px;border-width:2px"></div>Zoeken…</div>`;
+  dd.classList.add('open');
+  addrTimer=setTimeout(()=>searchAddr(val),500);
+}
+
+async function searchAddr(q){
+  const dd=document.getElementById('addrDropdown');
+  try{
+    const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+', Nederland')}&format=json&limit=6&addressdetails=1&countrycodes=nl`;
+    const res=await fetch(url,{headers:{'User-Agent':'PlanSlim/4.0','Accept-Language':'nl'}});
+    const results=await res.json();
+    if(!results.length){dd.innerHTML=`<div class="addr-searching">Geen resultaten gevonden</div>`;return;}
+    dd.innerHTML=results.map((r,i)=>{
+      const a=r.address||{};
+      const road=a.road||a.pedestrian||a.footway||'';
+      const num=a.house_number||'';
+      const pc=(a.postcode||'').replace(/\s/g,'').toUpperCase();
+      const city=a.city||a.town||a.village||a.municipality||'';
+      const main=`${road}${num?' '+num:''}${city?', '+city:''}`;
+      const sub=pc?`${pc.slice(0,4)+' '+pc.slice(4,6)} ${city}`:'';
+      return`<div class="addr-opt" tabindex="0" onclick="selectAddr(${i})" onkeydown="if(event.key==='Enter')selectAddr(${i})"
+        data-idx="${i}" data-main="${escH(main)}" data-pc="${escH(pc)}" data-lat="${r.lat}" data-lng="${r.lon}">
+        <strong>${escH(main||r.display_name)}</strong>
+        <span>${escH(sub||r.display_name.split(',').slice(-2).join(',').trim())}</span>
+      </div>`;
+    }).join('');
+    dd.classList.add('open');
+  }catch(e){dd.innerHTML=`<div class="addr-searching">Zoekfout — controleer verbinding</div>`;}
+}
+
+function selectAddr(idx){
+  const dd=document.getElementById('addrDropdown');
+  const opt=dd.querySelector(`[data-idx="${idx}"]`);if(!opt)return;
+  const main=opt.dataset.main;const pc=opt.dataset.pc;
+  const lat=parseFloat(opt.dataset.lat);const lng=parseFloat(opt.dataset.lng);
+  addrSelected={display:main,pc,lat,lng};
+  document.getElementById('addrInput').value=main;
+  dd.classList.remove('open');
+  if(pc&&validPC(pc))document.getElementById('pcInput').value=pc.slice(0,4)+' '+pc.slice(4,6);
+  const conf=document.getElementById('addrConfirmed');
+  document.getElementById('addrConfirmedText').textContent=`${main}${pc?' · '+pc.slice(0,4)+' '+pc.slice(4,6):''}`;
+  conf.classList.add('show');
+  pinCallerOnMap(lat,lng,main);
+}
+
+function onAddrKey(e){
+  const dd=document.getElementById('addrDropdown');
+  const opts=dd.querySelectorAll('.addr-opt');
+  if(!opts.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();opts[0].focus();}
+  if(e.key==='Escape')dd.classList.remove('open');
+}
+
+function resetAddr(){
+  addrSelected=null;
+  document.getElementById('addrInput').value='';
+  document.getElementById('addrConfirmed').classList.remove('show');
+  document.getElementById('addrInput').focus();
+  if(callerMarker){mainMap.removeLayer(callerMarker);callerMarker=null;}
+}
+
+function escH(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ══════════════════════════════════════════════
+// TIME SLOTS
+// ══════════════════════════════════════════════
+function selectSlot(btn,group){
+  if(btn.classList.contains('taken'))return;
+  document.querySelectorAll('[data-slot]').forEach(b=>{if(SLOTS[b.dataset.slot]?.group===group)b.classList.remove('sel');});
+  if(freeSlotActive)toggleFreeSlot();
+  btn.classList.add('sel');
+  slotsByGroup[group]=btn.dataset.slot;
+}
+
+function getSelectedSlot(){
+  for(const g of['morning','afternoon','evening1','evening2']){if(slotsByGroup[g])return slotsByGroup[g];}
+  return freeSlotActive?'free':null;
+}
+
+function toggleFreeSlot(){
+  freeSlotActive=!freeSlotActive;
+  document.getElementById('freeToggle').classList.toggle('on',freeSlotActive);
+  document.getElementById('freeSlotBody').classList.toggle('open',freeSlotActive);
+  if(freeSlotActive){
+    document.querySelectorAll('[data-slot]').forEach(b=>b.classList.remove('sel'));
+    slotsByGroup={morning:null,afternoon:null,evening1:null,evening2:null};
+  }
+}
+
+function updateSlotCounts(byDay){
+  if(!byDay)return;
+  const counts={'09-11':0,'10-12':0,'13-15':0,'17-19':0,'20-22':0};
+  DAYS.forEach(d=>(byDay[d]||[]).forEach(a=>{if(a.slot&&counts[a.slot]!==undefined)counts[a.slot]++;}));
+  Object.entries(counts).forEach(([s,n])=>{const el=document.getElementById(`sc-${s}`);if(el)el.textContent=n>0?`${n} al ingepland`:''});
 }
 
 // ══════════════════════════════════════════════
-// STAFF AVAILABILITY — with time-aware capacity
+// MAIN MAP
 // ══════════════════════════════════════════════
-function isOnVac(sid,date){
-  const ds=date.toISOString().slice(0,10);
-  return ST.vacations.some(v=>v.staffId===sid&&ds>=v.from&&ds<=v.to);
+function initMainMap(){
+  mainMap=L.map('mainMap',{center:[52.15,5.3],zoom:7,zoomControl:true,attributionControl:false});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(mainMap);
+  document.getElementById('mapLoader').style.display='none';
+  document.getElementById('mapLegend').style.display='flex';
+  if(ST.apiKey)loadWeekApptsAndPlotMap();
 }
 
-function getAvailableStaff(day,date){
-  return ST.staff.filter(s=>{
-    const sched=s.schedule[day];
-    if(!sched||!sched.active)return false;
-    if(isOnVac(s.id,date))return false;
-    return true;
+function clearMapMarkers(){mapMarkers.forEach(m=>{try{mainMap.removeLayer(m);}catch(e){}});mapMarkers=[];}
+
+function pinCallerOnMap(lat,lng,label){
+  if(callerMarker)mainMap.removeLayer(callerMarker);
+  callerMarker=L.circleMarker([lat,lng],{radius:11,fillColor:'#e74c3c',color:'#fff',weight:2.5,fillOpacity:1,zIndexOffset:1000}).addTo(mainMap);
+  callerMarker.bindPopup(`<strong style="font-family:'Syne',sans-serif">📞 Beller</strong><br>${label}`).openPopup();
+  mainMap.setView([lat,lng],11);
+}
+
+async function loadWeekApptsAndPlotMap(){
+  if(!ST.apiKey)return;
+  const monday=getMonday(selWeekOff());
+  const byDay=await fetchWeekAppts(monday);
+  if(byDay){plotApptsOnMap(byDay,monday);updateSlotCounts(byDay);}
+}
+
+function slotColor(slot){return{'09-11':'#f59e0b','10-12':'#f59e0b','13-15':'#1e3fd4','17-19':'#6b3fa0','20-22':'#167a5b'}[slot]||'#888888';}
+
+function plotApptsOnMap(byDay,monday){
+  clearMapMarkers();
+  const allCoords=[];
+  DAYS.forEach((d,i)=>{
+    const appts=byDay[d]||[];
+    const date=new Date(monday);date.setDate(date.getDate()+i);
+    const ds=date.toLocaleDateString('nl-NL',{weekday:'short',day:'numeric',month:'short'});
+    appts.forEach(appt=>{
+      if(!appt.lat||!appt.lng)return;
+      const col=slotColor(appt.slot);
+      const m=L.circleMarker([appt.lat,appt.lng],{radius:7,fillColor:col,color:'#fff',weight:1.5,fillOpacity:.9}).addTo(mainMap);
+      const slotLbl=appt.slot&&SLOTS[appt.slot]?SLOTS[appt.slot].label:'–';
+      m.bindPopup(`<div style="font-family:'Epilogue',sans-serif;font-size:12px;min-width:145px;line-height:1.55">
+        <strong style="font-family:'Syne',sans-serif">${appt.name||'Afspraak'}</strong><br>
+        📅 ${ds}<br>🕐 ${slotLbl}<br>📍 ${appt.address||appt.postalCode||''}
+      </div>`);
+      mapMarkers.push(m);
+      allCoords.push([appt.lat,appt.lng]);
+    });
   });
-}
-
-function getDayCapacity(staffMember,day){
-  const sched=staffMember.schedule[day];
-  if(!sched||!sched.active)return 0;
-  // Calculate available minutes
-  const toMins=t=>{const[h,m]=t.split(':').map(Number);return h*60+m;};
-  const workMins=toMins(sched.end)-toMins(sched.start);
-  const breakMins=toMins(sched.breakEnd)-toMins(sched.breakStart);
-  const available=Math.max(0,workMins-breakMins);
-  // Capacity = floor(available/apptDuration), capped by maxAppts
-  const fromTime=Math.floor(available/APPT_DUR_MIN);
-  return Math.min(fromTime,sched.maxAppts||4);
-}
-
-function getDayTotalCapacity(day,date){
-  const avail=getAvailableStaff(day,date);
-  return avail.reduce((sum,s)=>sum+getDayCapacity(s,day),0);
+  if(allCoords.length>1&&!callerMarker)mainMap.fitBounds(allCoords,{padding:[28,28]});
 }
 
 // ══════════════════════════════════════════════
@@ -658,9 +1032,8 @@ async function fetchWeekAppts(monday){
     });
     if(!res.ok)throw new Error(res.status);
     const data=await res.json();
-    cachedAppts=groupByDay(data.orders||[],monday);
-    lastWeekKey=wk;setApiSt(true,`${(data.orders||[]).length} afspraken`);
-    return cachedAppts;
+    cachedAppts=await parseOrders(data.orders||[],monday);
+    lastWeekKey=wk;setApiSt(true,`${(data.orders||[]).length} afspraken`);return cachedAppts;
   }catch(e){
     try{
       const all=[];
@@ -670,57 +1043,83 @@ async function fetchWeekAppts(monday){
         if(!r.ok)continue;const rd=await r.json();
         (rd.routes||[]).forEach(rt=>(rt.stops||[]).forEach(s=>{if(s.order){s.order._date=ds;all.push(s.order);}}));
       }
-      cachedAppts=groupByDay(all,monday);lastWeekKey=wk;setApiSt(true,`${all.length} afspraken`);return cachedAppts;
+      cachedAppts=await parseOrders(all,monday);lastWeekKey=wk;setApiSt(true,`${all.length} afspraken`);return cachedAppts;
     }catch(e2){setApiSt(false,'API fout');return null;}
   }
 }
 
-function groupByDay(orders,monday){
+async function parseOrders(orders,monday){
   const byDay={};DAYS.forEach(d=>byDay[d]=[]);
-  orders.forEach(o=>{
+  const toGeocode=[];
+  for(const o of orders){
     const loc=o.location||o.address||{};
     const pc=(loc.postalCode||loc.postal_code||o.postalCode||'').replace(/\s/g,'').toUpperCase();
     const ds=o._date||o.date||o.scheduledAt?.slice(0,10)||'';
-    if(!ds)return;
+    if(!ds)continue;
     const idx=Math.round((new Date(ds)-monday)/86400000);
-    if(idx>=0&&idx<5)byDay[DAYS[idx]].push({postalCode:pc,region:getRegion(pc,ST.clusterMethod)});
-  });
+    if(idx<0||idx>4)continue;
+    const tw=o.timeWindows?.[0]||o.timeWindow||null;
+    let slot=null;
+    if(tw){const f=String(tw.timeFrom||tw.from||'').padStart(4,'0');const h=parseInt(f.slice(0,2));
+      if(h===9)slot='09-11';else if(h===10)slot='10-12';else if(h===13)slot='13-15';else if(h===17)slot='17-19';else if(h===20)slot='20-22';}
+    let lat=parseFloat(loc.lat||loc.latitude||0)||null;
+    let lng=parseFloat(loc.lng||loc.longitude||0)||null;
+    const addrStr=[loc.address,loc.city].filter(Boolean).join(', ')||pc;
+    const name=o.name||o.customField1||o.notes?.slice(0,30)||'Afspraak';
+    const obj={name,postalCode:pc,address:addrStr,region:getRegion(pc,ST.clusterMethod),slot,lat,lng};
+    byDay[DAYS[idx]].push(obj);
+    if((!lat||!lng)&&addrStr&&toGeocode.length<8)toGeocode.push({obj,addrStr});
+  }
+  for(const {obj,addrStr} of toGeocode){
+    try{
+      const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addrStr+', Nederland')}&format=json&limit=1`;
+      const r=await fetch(url,{headers:{'User-Agent':'PlanSlim/4.0'}});
+      const d=await r.json();
+      if(d[0]){obj.lat=parseFloat(d[0].lat);obj.lng=parseFloat(d[0].lon);}
+    }catch(e){}
+    await new Promise(r=>setTimeout(r,350));
+  }
   return byDay;
+}
+
+// ══════════════════════════════════════════════
+// AVAILABILITY
+// ══════════════════════════════════════════════
+function isOnVac(sid,date){const ds=date.toISOString().slice(0,10);return ST.vacations.some(v=>v.staffId===sid&&ds>=v.from&&ds<=v.to);}
+function getAvailStaff(day,date){return ST.staff.filter(s=>{const sc=s.schedule?.[day];if(!sc||!sc.active)return false;return!isOnVac(s.id,date);});}
+function getDayCap(s,day){
+  const sc=s.schedule?.[day];if(!sc||!sc.active)return 0;
+  const toM=t=>{const[h,m]=t.split(':').map(Number);return h*60+m;};
+  return Math.min(Math.floor(Math.max(0,toM(sc.end)-toM(sc.start)-toM(sc.breakEnd)+toM(sc.breakStart))/APPT_DUR_MIN),sc.maxAppts||4);
+}
+function slotAvailOnDay(day,date,slotKey,byDay){
+  const appts=(byDay&&byDay[day])||[];
+  const taken=appts.filter(a=>a.slot===slotKey).length;
+  const cap=getAvailStaff(day,date).length;
+  return{taken,cap,free:Math.max(0,cap-taken)};
 }
 
 // ══════════════════════════════════════════════
 // ADVICE
 // ══════════════════════════════════════════════
-function computeAdvice(callerRegion,byDay,wdates){
+function computeAdvice(callerRegion,byDay,wdates,prefSlot){
   return wdates.map(({day,date})=>{
-    const avail=getAvailableStaff(day,date);
-    const capacity=avail.reduce((s,w)=>s+getDayCapacity(w,day),0);
+    const avail=getAvailStaff(day,date);
+    const totalCap=avail.reduce((s,w)=>s+getDayCap(w,day),0);
     const appts=(byDay&&byDay[day])||[];
     const used=appts.length;
-    const free=Math.max(0,capacity-used);
-    const hasSlot=free>0&&avail.length>0;
-
+    const free=Math.max(0,totalCap-used);
+    let slotFree=0;
+    if(prefSlot&&prefSlot!=='free'){const sa=slotAvailOnDay(day,date,prefSlot,byDay);slotFree=sa.free;}
+    else slotFree=free;
+    const hasSlot=slotFree>0&&avail.length>0;
     const regionAppts=appts.filter(a=>a.region===callerRegion).length;
-    const regionStaff=avail.filter(s=>s.regions.length===0||s.regions.includes(callerRegion)).length;
-
+    const regionSlotAppts=appts.filter(a=>a.region===callerRegion&&a.slot===prefSlot).length;
+    const regionStaff=avail.filter(s=>!s.regions?.length||s.regions.includes(callerRegion)).length;
     let score=-9999;
-    if(hasSlot){
-      score=0;
-      score+=regionAppts*35;
-      score+=regionStaff*18;
-      const util=used/(capacity||1);
-      if(util>0.2&&util<0.82)score+=15;
-      score+=Math.min(free,5)*5;
-      score+=avail.length*3;
-    }
-
-    // Earliest available window per staff
-    const windows=avail.map(s=>{
-      const sched=s.schedule[day];
-      return`${s.name.split(' ')[0]}: ${sched.start}–${sched.end}`;
-    });
-
-    return{day,date,avail,capacity,used,free,hasSlot,regionAppts,regionStaff,score,windows};
+    if(hasSlot){score=0;score+=regionAppts*28;score+=regionSlotAppts*22;score+=regionStaff*16;const util=used/(totalCap||1);if(util>0.2&&util<0.8)score+=12;score+=Math.min(slotFree,4)*6;score+=avail.length*3;}
+    const windows=avail.slice(0,3).map(s=>`${s.name.split(' ')[0]}: ${s.schedule[day].start}–${s.schedule[day].end}`);
+    return{day,date,avail,totalCap,used,free,slotFree,hasSlot,regionAppts,regionStaff,score,windows,prefSlot};
   });
 }
 
@@ -730,170 +1129,253 @@ function computeAdvice(callerRegion,byDay,wdates){
 async function doAdvise(){
   const pc=parsePC(document.getElementById('pcInput').value);
   const name=document.getElementById('callerName').value.trim()||'Beller';
-  const addr=document.getElementById('callerAddr').value.trim();
-  const err=document.getElementById('planErr');
-  err.classList.remove('on');
-
-  if(!validPC(pc)){err.textContent='⚠ Geldige postcode vereist (bijv. 1234AB)';err.classList.add('on');return;}
-  if(!ST.staff.length){err.textContent='⚠ Voeg eerst medewerkers toe via het tabblad "Medewerkers".';err.classList.add('on');return;}
-
+  const addr=addrSelected?.display||document.getElementById('addrInput').value.trim()||'';
+  const err=document.getElementById('planErr');err.classList.remove('on');
+  const prefSlot=getSelectedSlot();
+  if(!prefSlot){err.textContent='⚠ Selecteer een tijdslot of gebruik "vrij insturen".';err.classList.add('on');return;}
+  if(!validPC(pc)&&!addrSelected){err.textContent='⚠ Selecteer een adres uit de dropdown, of vul een geldige postcode in.';err.classList.add('on');return;}
+  if(!ST.staff.length){err.textContent='⚠ Voeg eerst medewerkers toe via "Medewerkers".';err.classList.add('on');return;}
   saveSettings();
   document.getElementById('emptyHint').style.display='none';
   document.getElementById('resultWrap').style.display='none';
   document.getElementById('loadHint').classList.add('on');
   document.getElementById('advBtn').disabled=true;
-
   const monday=getMonday(selWeekOff());
-  const callerRegion=getRegion(pc,ST.clusterMethod);
+  const callerRegion=getRegion(addrSelected?.pc||pc,ST.clusterMethod);
   let byDay=await fetchWeekAppts(monday);
-  if(!byDay){
-    byDay={};DAYS.forEach(d=>byDay[d]=[]);
-    err.textContent='ℹ API niet bereikbaar — advies op basis van rooster';err.classList.add('on');
-  }
-
-  const advice=computeAdvice(callerRegion,byDay,wkDates(monday));
+  if(!byDay){byDay={};DAYS.forEach(d=>byDay[d]=[]);err.textContent='ℹ API niet bereikbaar — advies op basis van rooster';err.classList.add('on');}
+  plotApptsOnMap(byDay,monday);
+  if(addrSelected)pinCallerOnMap(addrSelected.lat,addrSelected.lng,name);
+  const advice=computeAdvice(callerRegion,byDay,wkDates(monday),prefSlot);
   advice.sort((a,b)=>b.score-a.score);
-
   document.getElementById('loadHint').classList.remove('on');
   document.getElementById('advBtn').disabled=false;
-  renderResult(name,addr,pc,callerRegion,advice);
-
-  // Log to analytics
-  logAdviseEvent(callerRegion,advice[0]);
-}
-
-function logAdviseEvent(region,best){
-  const today=new Date().toISOString().slice(0,10);
-  if(!ST.analytics.regions[region])ST.analytics.regions[region]=0;
-  ST.analytics.regions[region]++;
-  saveST(true);
+  const slotLabel=prefSlot==='free'?`${document.getElementById('freeFrom').value}–${document.getElementById('freeTo').value} (vrij)`:(SLOTS[prefSlot]?.label||prefSlot);
+  renderResult(name,addr,addrSelected?.pc||pc,callerRegion,advice,prefSlot,slotLabel,byDay);
+  updateSlotCounts(byDay);
 }
 
 // ══════════════════════════════════════════════
 // RENDER RESULT
 // ══════════════════════════════════════════════
-function renderResult(name,addr,pc,region,advice){
-  const best=advice[0];
-  const wrap=document.getElementById('resultWrap');
+// ══════════════════════════════════════════════
+// ADVICE POPUP
+// ══════════════════════════════════════════════
+let currentAdvice=null, currentAdviceCtx=null, activeOptionIdx=0;
 
-  const confPct=best.score<0?0:Math.min(96,52+best.regionAppts*15+best.regionStaff*9+(best.free>1?7:0));
-  const confLvl=confPct>=72?'hi':confPct>=42?'md':'lo';
+function openAdvice(name,addr,pc,region,advice,prefSlot,slotLabel,byDay){
+  currentAdvice={name,addr,pc,region,advice,prefSlot,slotLabel,byDay};
+  activeOptionIdx=0;
+  buildSheet();
+  document.getElementById('adviceOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
 
-  const bDateStr=best.date.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});
+function closeAdvice(){
+  document.getElementById('adviceOverlay').classList.remove('open');
+  document.body.style.overflow='';
+  backToAdvice();
+}
 
-  let reasonTxt='',reasonCls='';
-  if(best.score<-100){
-    reasonTxt=`⚠️ Geen capaciteit beschikbaar deze week. Alle medewerkers zijn vol of afwezig. Probeer de volgende week.`;reasonCls='bad';
-  } else if(best.regionAppts>0&&best.regionStaff>0){
-    reasonTxt=`✅ Op ${DAYNL[best.day]} zijn er <strong>${best.regionAppts} bestaande afspraken</strong> in regio <strong>${region}</strong> én <strong>${best.regionStaff} medewerker${best.regionStaff>1?'s':''}</strong> met voorkeur voor dit gebied. Maximale clusterefficiëntie.`;
-  } else if(best.regionAppts>0){
-    reasonTxt=`📍 <strong>${best.regionAppts} bestaande afspraken</strong> in regio <strong>${region}</strong> op ${DAYNL[best.day]}. Efficiënte routecombinatie mogelijk.`;reasonCls='';
-  } else if(best.regionStaff>0){
-    reasonTxt=`👤 <strong>${best.regionStaff} medewerker${best.regionStaff>1?'s':''}</strong> met voorkeur voor regio <strong>${region}</strong> beschikbaar op ${DAYNL[best.day]}. Nog geen andere afspraken in dit gebied.`;reasonCls='warn';
-  } else {
-    reasonTxt=`📅 Geen clustervoordeel, maar ${DAYNL[best.day]} heeft <strong>${best.free} vrije slot${best.free===1?'':'s'}</strong> met ${best.avail.length} medewerker${best.avail.length===1?'':'s'} beschikbaar.`;reasonCls='warn';
-  }
+function overlayClick(e){if(e.target===document.getElementById('adviceOverlay'))closeAdvice();}
 
-  // Day rows
-  const rowsHtml=advice.map((item,idx)=>{
-    const pct=item.capacity>0?Math.round(item.used/item.capacity*100):100;
-    const barCls=pct>=85?'br':pct>=60?'ba':'bg';
-    const rowCls=idx===0?'dbest':item.hasSlot?'dok':'dfull';
-    const tag=idx===0?`<span class="dtag">Advies</span>`:'';
-    const ds=item.date.toLocaleDateString('nl-NL',{day:'numeric',month:'short'});
-    const slotTxt=item.avail.length===0?'Geen personeel':item.free===0?'Vol':`${item.free} slot${item.free===1?'':'s'}`;
-    const capDetail=item.avail.length>0?`${item.capacity} totaal (${item.avail.map(s=>getDayCapacity(s,item.day)).join('+')} per pers.)`:'';
-    const rm=item.regionAppts>0?`<span class="drm rmy">★${item.regionAppts}</span>`:`<span class="drm rmn">–</span>`;
-    const names=item.avail.map(s=>s.name.split(' ')[0]).join(', ');
-    return`
-      <div class="drow ${rowCls}">
-        <div class="dname">${DAYSH[item.day]} <small style="font-size:.65rem;font-weight:400;color:var(--muted)">${ds}</small>${tag}</div>
-        <div><div class="bwrap"><div class="bar ${barCls}" style="width:${pct}%"></div></div><div class="capdetail">${capDetail}</div></div>
-        <div class="dslot">${slotTxt}</div>
-        ${rm}
-        <div style="font-size:.66rem;color:var(--muted);text-align:right">${item.avail.length}p</div>
-      </div>
-      ${names?`<div class="wnames">${names}${item.windows.length?` · ${item.windows.slice(0,2).join(', ')}`:''}${item.windows.length>2?` +${item.windows.length-2}`:''}...</div>`:''}
-    `;
+function buildSheet(){
+  const {name,addr,pc,region,advice,prefSlot,slotLabel,byDay}=currentAdvice;
+  document.getElementById('sheetTitle').textContent=`Advies voor ${name}`;
+  document.getElementById('sheetMeta').textContent=`${pc||''} · ${region} · ${slotLabel}`;
+
+  // Build tabs (max 5 options, only hasSlot or best no-slot)
+  const opts=advice.filter((a,i)=>i<5);
+  const tabs=document.getElementById('optionTabs');
+  tabs.innerHTML=opts.map((item,i)=>{
+    const isOk=item.hasSlot;
+    const pct=item.score<0?0:Math.min(96,50+item.regionAppts*14+item.regionStaff*9+(item.slotFree>0?10:0));
+    const dotCol=isOk?(pct>=70?'var(--green)':pct>=40?'var(--amber)':'var(--blue)'):'var(--red)';
+    const label=i===0?`⭐ ${DAYNL[item.day]}`:`${DAYSH[item.day]}`;
+    return`<button class="otab ${i===0?'active':''}" onclick="switchOption(${i})" id="otab-${i}">
+      <div class="tab-badge" style="background:${dotCol}"></div>
+      ${label}
+      <span class="tab-score" style="color:${dotCol}">${isOk?pct+'%':'vol'}</span>
+    </button>`;
   }).join('');
 
-  const tf=document.getElementById('tFrom').value||'08:00';
-  const tt=document.getElementById('tTo').value||'18:00';
+  // Build panels
+  const panels=document.getElementById('optionPanels');
+  panels.innerHTML=opts.map((item,i)=>buildOptionPanel(item,i,prefSlot,slotLabel,byDay,region)).join('');
 
-  wrap.innerHTML=`
-  <div class="rwrap"><div class="rcard">
-    <div class="rhead">
-      <div>
-        <div class="rfor">Inplanadvies voor</div>
-        <div class="rname">${name}</div>
-        <div class="rsub">${pc}${addr?' · '+addr:''} · Regio: ${region}</div>
-      </div>
-      <div class="cbadge">
-        <div class="ccirc ${confLvl}">${confPct}%</div>
-        <div class="clbl">Match</div>
-      </div>
-    </div>
-
-    <div class="bestblock">
-      <div class="blbl">Aanbevolen dag</div>
-      <div class="bday" style="color:${best.score<-100?'var(--red)':'var(--ink)'}">${best.score<-100?'Geen capaciteit':DAYNL[best.day]}</div>
-      <div class="bdate">${best.score<-100?'Probeer de volgende week':bDateStr}</div>
-      <div class="breason ${reasonCls}">${reasonTxt}</div>
-    </div>
-
-    <div class="dtable">
-      <div class="dhead"><div>Dag</div><div>Bezetting</div><div>Slots</div><div>★Regio</div><div>Pers.</div></div>
-      ${rowsHtml}
-    </div>
-
-    <div id="rmap"></div>
-
-    <div class="oblock">
-      <div class="otitle">📋 Direct inplannen in OptimoRoute</div>
-      <div class="osuc" id="oSuc">✅ Order succesvol aangemaakt!</div>
-      <div class="oerr" id="oErr"></div>
-      <div class="ogrid">
-        <div class="full"><span class="flabel">Klantnaam</span><input class="finput" id="oName" value="${name}"></div>
-        <div class="full"><span class="flabel">Adres</span><input class="finput" id="oAddr" value="${addr||pc}"></div>
-        <div>
-          <span class="flabel">Datum</span>
-          <input class="finput" type="date" id="oDate" value="${best.score>-100?best.date.toISOString().slice(0,10):''}">
-        </div>
-        <div>
-          <span class="flabel">Tijdvenster</span>
-          <div style="display:flex;gap:.3rem;align-items:center">
-            <input class="finput" style="padding:.5rem .65rem" type="time" id="oFrom" value="${tf}">
-            <span style="font-size:.72rem;color:var(--muted)">–</span>
-            <input class="finput" style="padding:.5rem .65rem" type="time" id="oTo" value="${tt}">
-          </div>
-        </div>
-        <div class="full"><span class="flabel">Notitie</span><input class="finput" id="oNote" placeholder="bijv. bel vooraf aan"></div>
-      </div>
-      <button class="obtn" id="oBtn" onclick="createOrder()"><span>↗</span> Inplannen in OptimoRoute</button>
-    </div>
-  </div></div>`;
-
-  wrap.style.display='block';
-  setTimeout(()=>renderMiniMap(pc,region),60);
+  // Action bar
+  updateActionBar(opts[0],slotLabel);
 }
 
-function renderMiniMap(pc,region){
-  if(rMapInst){rMapInst.remove();rMapInst=null;}
-  const el=document.getElementById('rmap');if(!el)return;
-  rMapInst=L.map('rmap',{center:[52.3,5.3],zoom:8,zoomControl:false,attributionControl:false,scrollWheelZoom:false});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(rMapInst);
-  const ll=pcLL(pc);
-  L.circleMarker([ll.lat,ll.lng],{radius:10,fillColor:'#1e3fd4',color:'#fff',weight:2.5,fillOpacity:.9})
-    .addTo(rMapInst).bindPopup(`<strong>${pc}</strong><br>${region}`).openPopup();
-  rMapInst.setView([ll.lat,ll.lng],9);
+function buildOptionPanel(item,i,prefSlot,slotLabel,byDay,region){
+  const pct=item.score<0?0:Math.min(96,50+item.regionAppts*14+item.regionStaff*9+(item.slotFree>0?10:0));
+  const col=pct>=70?'var(--green)':pct>=40?'var(--amber)':'var(--red)';
+  const circumference=2*Math.PI*30;
+  const dash=circumference*(pct/100);
+  const strokeColor=pct>=70?'#167a5b':pct>=40?'#d4920a':'#b03030';
+  const bDateStr=item.date.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});
+
+  // Reason
+  let reasonTxt='',reasonCls='';
+  if(item.score<-100){reasonTxt=`⚠️ Geen beschikbare plekken voor tijdslot <strong>${slotLabel}</strong> op ${DAYNL[item.day]}.`;reasonCls='bad';}
+  else if(item.regionAppts>0&&item.regionStaff>0&&item.slotFree>0){reasonTxt=`✅ <strong>${item.regionAppts} bestaande afspraken</strong> in regio ${region} + <strong>${item.regionStaff} medewerker${item.regionStaff>1?'s':''}</strong> met regievoorkeur. Tijdslot heeft ${item.slotFree} vrije plek${item.slotFree===1?'':'ken'}.`;}
+  else if(item.regionAppts>0&&item.slotFree>0){reasonTxt=`📍 <strong>${item.regionAppts} afspraken</strong> in regio ${region} op ${DAYNL[item.day]}. Tijdslot <strong>${slotLabel}</strong>: ${item.slotFree} vrij.`;}
+  else if(item.slotFree>0){reasonTxt=`📅 Tijdslot <strong>${slotLabel}</strong> heeft ${item.slotFree} vrij${item.regionAppts===0?' (geen andere afspraken in jouw regio vandaag)':''}.`;}
+  else{reasonTxt=`❌ Tijdslot <strong>${slotLabel}</strong> is vol of geen personeel beschikbaar.`;reasonCls='bad';}
+
+  // Slot color
+  const slotCol=prefSlot!=='free'&&SLOTS[prefSlot]?SLOTS[prefSlot].color:'#888';
+
+  // Staff chips
+  const staffHtml=item.avail.length===0
+    ?`<div style="font-size:.74rem;color:var(--muted)">Geen medewerkers beschikbaar</div>`
+    :item.avail.map(s=>{
+      const sc=s.schedule?.[item.day];
+      const hrs=sc?`${sc.start}–${sc.end}`:'';
+      return`<div class="staff-chip"><div class="chip-dot" style="background:${s.color}"></div>${s.name.split(' ')[0]}<span class="chip-hours">${hrs}</span></div>`;
+    }).join('');
+
+  // Slot × day mini table (5 slots × 5 days, highlight this day+slot)
+  const slotKeys=Object.keys(SLOTS);
+  const miniRows=slotKeys.map(sk=>{
+    const cells=currentAdvice.advice.map(a=>{
+      const sa=slotAvailOnDay(a.day,a.date,sk,byDay);
+      const isHere=(a.day===item.day&&sk===prefSlot);
+      const cls=isHere?'here':sa.free>0?'free':'taken';
+      return`<div class="slot-mini-pip ${cls}">${sa.free>0?sa.free:'–'}</div>`;
+    }).join('');
+    const slotC=SLOTS[sk].color;
+    return`<div style="display:contents">
+      <div style="font-size:.64rem;font-weight:600;color:${slotC};display:flex;align-items:center;padding:.3rem 0;border-bottom:1px solid var(--border2);grid-column:1/-1">
+        ${SLOTS[sk].label}
+      </div>
+      ${cells}
+    </div>`;
+  });
+
+  // Actually build a proper mini grid showing all days for THIS slot only
+  const dayPips=currentAdvice.advice.map(a=>{
+    const sa=slotAvailOnDay(a.day,a.date,prefSlot&&prefSlot!=='free'?prefSlot:'',byDay);
+    const isHere=(a.day===item.day);
+    const cls=isHere&&sa.free>0?'here':sa.free>0?'free':'taken';
+    return`<div class="slot-mini-day">
+      <div class="slot-mini-label">${DAYSH[a.day]}</div>
+      <div class="slot-mini-pip ${cls}" title="${sa.free} vrij">${sa.free>0?sa.free:'–'}</div>
+    </div>`;
+  }).join('');
+
+  return`<div class="option-panel ${i===0?'active':''}" id="opanel-${i}">
+    <div class="day-hero">
+      <div class="day-hero-left">
+        <div class="day-big" style="color:${item.score<-100?'var(--red)':'var(--ink)'}">${DAYNL[item.day]}</div>
+        <div class="day-date">${bDateStr}</div>
+        <div class="slot-chip">
+          <div class="slot-dot" style="background:${slotCol}"></div>
+          ${slotLabel}
+        </div>
+      </div>
+      <div class="day-hero-right">
+        <div class="match-ring">
+          <svg width="72" height="72" viewBox="0 0 72 72">
+            <circle class="ring-bg" cx="36" cy="36" r="30"/>
+            <circle class="ring-fill" cx="36" cy="36" r="30"
+              stroke="${strokeColor}"
+              stroke-dasharray="${circumference}"
+              stroke-dashoffset="${circumference-dash}"/>
+          </svg>
+          <div class="match-pct" style="color:${strokeColor}">${pct}%</div>
+        </div>
+        <div class="match-lbl">Match</div>
+      </div>
+    </div>
+
+    <div class="reason-block ${reasonCls}">${reasonTxt}</div>
+
+    <div style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:.5rem">Beschikbare medewerkers</div>
+    <div class="staff-chips">${staffHtml}</div>
+
+    <div style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:.5rem">Tijdslot <strong style="color:${slotCol}">${slotLabel}</strong> — vrije plekken per dag</div>
+    <div class="slot-mini">${dayPips}</div>
+  </div>`;
 }
+
+function switchOption(idx){
+  activeOptionIdx=idx;
+  document.querySelectorAll('.otab').forEach((t,i)=>t.classList.toggle('active',i===idx));
+  document.querySelectorAll('.option-panel').forEach((p,i)=>p.classList.toggle('active',i===idx));
+  const item=currentAdvice.advice[idx];
+  updateActionBar(item,currentAdvice.slotLabel);
+}
+
+function nextOption(){
+  const opts=currentAdvice.advice.filter((_,i)=>i<5);
+  const next=(activeOptionIdx+1)%opts.length;
+  switchOption(next);
+  // Scroll tab into view
+  const tab=document.getElementById(`otab-${next}`);
+  if(tab)tab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+}
+
+function updateActionBar(item,slotLabel){
+  const btn=document.getElementById('confirmBtn');
+  const txt=document.getElementById('confirmBtnTxt');
+  const nextBtn=document.getElementById('nextOptionBtn');
+  const noSlot=item.score<-100||!item.hasSlot;
+  btn.disabled=noSlot;
+  txt.textContent=noSlot?'Geen capaciteit beschikbaar':`Inplannen op ${DAYNL[item.day]} · ${slotLabel}`;
+  const opts=currentAdvice.advice.filter((_,i)=>i<5);
+  nextBtn.style.display=opts.length>1?'':'none';
+}
+
+function goConfirm(){
+  const item=currentAdvice.advice[activeOptionIdx];
+  const {name,addr,pc,prefSlot,slotLabel}=currentAdvice;
+  // Fill confirm form
+  document.getElementById('confirmTitle').textContent=`Inplannen — ${DAYNL[item.day]} · ${slotLabel}`;
+  document.getElementById('oName').value=name;
+  document.getElementById('oAddr').value=addr||pc;
+  document.getElementById('oDate').value=item.date.toISOString().slice(0,10);
+  const orderFrom=prefSlot!=='free'&&SLOTS[prefSlot]?SLOTS[prefSlot].from:document.getElementById('freeFrom')?.value||'09:00';
+  const orderTo=prefSlot!=='free'&&SLOTS[prefSlot]?SLOTS[prefSlot].to:document.getElementById('freeTo')?.value||'11:00';
+  document.getElementById('oFrom').value=orderFrom;
+  document.getElementById('oTo').value=orderTo;
+  document.getElementById('oNote').value='';
+  document.getElementById('oSuc').classList.remove('on');
+  document.getElementById('oErr').classList.remove('on');
+  document.getElementById('oBtn').disabled=false;
+  document.getElementById('oBtn').innerHTML='<span>↗</span> Bevestig & plan in';
+  // Switch view
+  document.getElementById('optionTabs').style.display='none';
+  document.getElementById('optionPanels').style.display='none';
+  document.getElementById('sheetActions').style.display='none';
+  document.getElementById('confirmPanel').classList.add('active');
+}
+
+function backToAdvice(){
+  const tabs=document.getElementById('optionTabs');
+  const panels=document.getElementById('optionPanels');
+  const actions=document.getElementById('sheetActions');
+  const confirm=document.getElementById('confirmPanel');
+  if(tabs)tabs.style.display='';
+  if(panels)panels.style.display='';
+  if(actions)actions.style.display='';
+  if(confirm)confirm.classList.remove('active');
+}
+
+// Replace old renderResult — now it just opens the popup
+function renderResult(name,addr,pc,region,advice,prefSlot,slotLabel,byDay){
+  // Keep old inline result hidden (legacy)
+  const wrap=document.getElementById('resultWrap');
+  if(wrap)wrap.style.display='none';
+  openAdvice(name,addr,pc,region,advice,prefSlot,slotLabel,byDay);
+}
+
 
 // ══════════════════════════════════════════════
 // CREATE ORDER
 // ══════════════════════════════════════════════
 async function createOrder(){
-  const btn=document.getElementById('oBtn');
-  const suc=document.getElementById('oSuc');const err=document.getElementById('oErr');
+  const btn=document.getElementById('oBtn');const suc=document.getElementById('oSuc');const err=document.getElementById('oErr');
   suc.classList.remove('on');err.classList.remove('on');
   if(!ST.apiKey){err.textContent='⚠ Geen API key. Ga naar ⚙ Instellingen.';err.classList.add('on');return;}
   const oName=document.getElementById('oName').value.trim();
@@ -903,330 +1385,183 @@ async function createOrder(){
   const oTo=document.getElementById('oTo').value;
   const oNote=document.getElementById('oNote').value.trim();
   if(!oName||!oAddr||!oDate){err.textContent='⚠ Naam, adres en datum zijn verplicht.';err.classList.add('on');return;}
-  btn.disabled=true;btn.innerHTML='<div class="spin" style="width:15px;height:15px;border-width:2px"></div> Aanmaken…';
-  const payload={operation:'CREATE',orders:[{
-    orderNo:`PS-${Date.now()}`,type:'D',date:oDate,
-    location:{address:oAddr},notes:oNote||undefined,
-    timeWindows:oFrom&&oTo?[{timeFrom:oFrom.replace(':',''),timeTo:oTo.replace(':','')}]:undefined,
-    duration:APPT_DUR_MIN,customField1:oName,
-  }]};
+  btn.disabled=true;btn.innerHTML='<div class="spin" style="width:13px;height:13px;border-width:2px"></div> Aanmaken…';
+  const payload={operation:'CREATE',orders:[{orderNo:`PS-${Date.now()}`,type:'D',date:oDate,location:{address:oAddr},notes:oNote||undefined,timeWindows:oFrom&&oTo?[{timeFrom:oFrom.replace(':',''),timeTo:oTo.replace(':','')}]:undefined,duration:APPT_DUR_MIN,customField1:oName}]};
   payload.orders[0]=JSON.parse(JSON.stringify(payload.orders[0]));
   try{
-    const res=await fetch(`https://api.optimoroute.com/v1/create_order?key=${encodeURIComponent(ST.apiKey)}`,{
-      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
-    });
+    const res=await fetch(`https://api.optimoroute.com/v1/create_order?key=${encodeURIComponent(ST.apiKey)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const data=await res.json();
-    if(data.success||res.ok){suc.classList.add('on');btn.innerHTML='✓ Aangemaakt';cachedAppts=null;lastWeekKey=null;}
+    if(data.success||res.ok){suc.classList.add('on');btn.innerHTML='✓ Aangemaakt';cachedAppts=null;lastWeekKey=null;setTimeout(loadWeekApptsAndPlotMap,600);}
     else throw new Error(data.message||`HTTP ${res.status}`);
-  }catch(e){
-    err.textContent=`❌ ${e.message}`;err.classList.add('on');
-    btn.disabled=false;btn.innerHTML='<span>↗</span> Inplannen in OptimoRoute';
-  }
+  }catch(e){err.textContent=`❌ ${e.message}`;err.classList.add('on');btn.disabled=false;btn.innerHTML='<span>↗</span> Inplannen in OptimoRoute';}
 }
 
 // ══════════════════════════════════════════════
 // STAFF PAGE
 // ══════════════════════════════════════════════
 function renderStaffPage(){renderStaffGrid();renderVacSection();}
-
-function ensureSchedule(s){
-  if(!s.schedule)s.schedule={};
-  DAYS.forEach(d=>{if(!s.schedule[d])s.schedule[d]={...DEFAULT_DAY_SCHED};});
-}
-
+function ensureSched(s){if(!s.schedule)s.schedule={};DAYS.forEach(d=>{if(!s.schedule[d])s.schedule[d]={...DEFAULT_DAY};});}
 function renderStaffGrid(){
   const grid=document.getElementById('staffGrid');grid.innerHTML='';
-  ST.staff.forEach(s=>{ensureSchedule(s);grid.appendChild(makeCard(s));});
+  ST.staff.forEach(s=>{ensureSched(s);grid.appendChild(makeCard(s));});
   const add=document.createElement('div');add.className='addcard';
   add.innerHTML=`<div class="addico">＋</div><div class="addlbl">Medewerker toevoegen</div>`;
   add.onclick=openModal;grid.appendChild(add);
 }
-
 function makeCard(s){
   const card=document.createElement('div');card.className='scard';
-
-  // Build schedule rows
-  const schedRows=DAYS.map(d=>{
-    const sc=s.schedule[d];
-    return`<tr>
-      <td><div class="dayon ${sc.active?'active':''}" onclick="toggleDayActive('${s.id}','${d}',this)">${DAYSH[d]}</div></td>
-      <td><input type="time" value="${sc.start}" onchange="updateSched('${s.id}','${d}','start',this.value)" ${sc.active?'':'disabled'}></td>
-      <td><input type="time" value="${sc.end}" onchange="updateSched('${s.id}','${d}','end',this.value)" ${sc.active?'':'disabled'}></td>
-      <td><input type="time" value="${sc.breakStart}" onchange="updateSched('${s.id}','${d}','breakStart',this.value)" ${sc.active?'':'disabled'}></td>
-      <td><input type="time" value="${sc.breakEnd}" onchange="updateSched('${s.id}','${d}','breakEnd',this.value)" ${sc.active?'':'disabled'}></td>
-      <td><input type="number" min="1" max="12" value="${sc.maxAppts}" onchange="updateSched('${s.id}','${d}','maxAppts',parseInt(this.value)||1)" ${sc.active?'':'disabled'} style="width:44px"></td>
-    </tr>`;
-  }).join('');
-
-  card.innerHTML=`
-    <button class="sdel" onclick="delStaff('${s.id}')">✕</button>
-    <div class="shead">
-      <div class="savatar" style="background:${s.color}">${s.name.charAt(0)}</div>
-      <div><div class="sname">${s.name}</div><div class="srole">${s.role||'Medewerker'}</div></div>
-    </div>
-
-    <div class="scsec">
-      <div class="sclabel">Werkrooster per dag</div>
-      <div style="overflow-x:auto">
-        <table class="dsched">
-          <thead><tr>
-            <th>Dag</th><th>Start</th><th>Einde</th><th>Pauze van</th><th>Pauze tot</th><th>Max</th>
-          </tr></thead>
-          <tbody>${schedRows}</tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="scsec">
-      <div class="sclabel">Regio voorkeur <small style="opacity:.55;font-size:.58rem">(leeg = overal inzetbaar)</small></div>
-      <div class="rpills">
-        ${REGIONS.map(r=>`<div class="rpill ${s.regions.includes(r)?'on':''}" onclick="toggleRegion('${s.id}','${r}',this)">${r}</div>`).join('')}
-      </div>
-    </div>
-  `;
+  const rows=DAYS.map(d=>{const sc=s.schedule[d];return`<tr>
+    <td><div class="dayon ${sc.active?'active':''}" onclick="toggleDayActive('${s.id}','${d}',this)">${DAYSH[d]}</div></td>
+    <td><input type="time" value="${sc.start}" onchange="updSched('${s.id}','${d}','start',this.value)" ${sc.active?'':'disabled'}></td>
+    <td><input type="time" value="${sc.end}" onchange="updSched('${s.id}','${d}','end',this.value)" ${sc.active?'':'disabled'}></td>
+    <td><input type="time" value="${sc.breakStart}" onchange="updSched('${s.id}','${d}','breakStart',this.value)" ${sc.active?'':'disabled'}></td>
+    <td><input type="time" value="${sc.breakEnd}" onchange="updSched('${s.id}','${d}','breakEnd',this.value)" ${sc.active?'':'disabled'}></td>
+    <td><input type="number" min="1" max="12" value="${sc.maxAppts}" onchange="updSched('${s.id}','${d}','maxAppts',parseInt(this.value)||1)" ${sc.active?'':'disabled'} style="width:42px"></td>
+  </tr>`;}).join('');
+  card.innerHTML=`<button class="sdel" onclick="delStaff('${s.id}')">✕</button>
+    <div class="shead"><div class="savatar" style="background:${s.color}">${s.name.charAt(0)}</div>
+      <div><div class="sname">${s.name}</div><div class="srole">${s.role||'Medewerker'}</div></div></div>
+    <div class="scsec"><div class="sclabel">Werkrooster — klik dag om aan/uit te zetten</div>
+      <div style="overflow-x:auto"><table class="dsched">
+        <thead><tr><th>Dag</th><th>Start</th><th>Einde</th><th>Pauze v</th><th>Pauze t</th><th>Max</th></tr></thead>
+        <tbody>${rows}</tbody></table></div></div>
+    <div class="scsec"><div class="sclabel">Regio voorkeur <small style="opacity:.5;font-size:.57rem">(leeg = overal)</small></div>
+      <div class="rpills">${REGIONS.map(r=>`<div class="rpill ${(s.regions||[]).includes(r)?'on':''}" onclick="togRegion('${s.id}','${r}',this)">${r}</div>`).join('')}</div></div>`;
   return card;
 }
-
-function toggleDayActive(sid,day,el){
-  const s=ST.staff.find(x=>x.id===sid);if(!s)return;
-  s.schedule[day].active=!s.schedule[day].active;
-  el.classList.toggle('active');
-  // Toggle inputs
-  const row=el.closest('tr');
-  row.querySelectorAll('input').forEach(i=>i.disabled=!s.schedule[day].active);
-  saveST();
-}
-
-function updateSched(sid,day,field,val){
-  const s=ST.staff.find(x=>x.id===sid);if(!s)return;
-  s.schedule[day][field]=val;saveST();
-}
-
-function toggleRegion(sid,region,el){
-  const s=ST.staff.find(x=>x.id===sid);if(!s)return;
-  if(s.regions.includes(region))s.regions=s.regions.filter(r=>r!==region);
-  else s.regions.push(region);
-  el.classList.toggle('on');saveST();
-}
-
-function delStaff(id){
-  if(!confirm('Medewerker verwijderen?'))return;
-  ST.staff=ST.staff.filter(s=>s.id!==id);
-  ST.vacations=ST.vacations.filter(v=>v.staffId!==id);
-  saveST();renderStaffPage();
-}
-
+function toggleDayActive(sid,day,el){const s=ST.staff.find(x=>x.id===sid);if(!s)return;s.schedule[day].active=!s.schedule[day].active;el.classList.toggle('active');el.closest('tr').querySelectorAll('input').forEach(i=>i.disabled=!s.schedule[day].active);saveST();}
+function updSched(sid,day,field,val){const s=ST.staff.find(x=>x.id===sid);if(!s)return;s.schedule[day][field]=val;saveST();}
+function togRegion(sid,r,el){const s=ST.staff.find(x=>x.id===sid);if(!s)return;if(!s.regions)s.regions=[];if(s.regions.includes(r))s.regions=s.regions.filter(x=>x!==r);else s.regions.push(r);el.classList.toggle('on');saveST();}
+function delStaff(id){if(!confirm('Verwijderen?'))return;ST.staff=ST.staff.filter(s=>s.id!==id);ST.vacations=ST.vacations.filter(v=>v.staffId!==id);saveST();renderStaffPage();}
 function openModal(){document.getElementById('moverlay').classList.add('on');document.getElementById('mName').focus();}
 function closeModal(){document.getElementById('moverlay').classList.remove('on');}
 function addStaff(){
-  const name=document.getElementById('mName').value.trim();
-  const role=document.getElementById('mRole').value.trim();
-  if(!name)return;
-  const id='s'+Date.now();
-  const color=AVCOLS[ST.staff.length%AVCOLS.length];
-  const schedule={};
-  DAYS.forEach(d=>schedule[d]={...DEFAULT_DAY_SCHED});
+  const name=document.getElementById('mName').value.trim();const role=document.getElementById('mRole').value.trim();if(!name)return;
+  const id='s'+Date.now();const color=AVCOLS[ST.staff.length%AVCOLS.length];
+  const schedule={};DAYS.forEach(d=>schedule[d]={...DEFAULT_DAY});
   ST.staff.push({id,name,role,color,schedule,regions:[]});
-  saveST();closeModal();
-  document.getElementById('mName').value='';document.getElementById('mRole').value='';
-  renderStaffPage();
+  saveST();closeModal();document.getElementById('mName').value='';document.getElementById('mRole').value='';renderStaffPage();
 }
-
-// vacation
 function renderVacSection(){
-  const sel=document.getElementById('vacStaff');
-  sel.innerHTML=ST.staff.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  const sel=document.getElementById('vacStaff');sel.innerHTML=ST.staff.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
   const list=document.getElementById('vacList');list.innerHTML='';
-  if(!ST.vacations.length){list.innerHTML='<div style="font-size:.76rem;color:var(--muted)">Geen verlof ingevoerd.</div>';return;}
-  ST.vacations.forEach((v,i)=>{
-    const sn=ST.staff.find(s=>s.id===v.staffId)?.name||'?';
-    const div=document.createElement('div');div.className='vacitem';
-    div.innerHTML=`<span><strong>${sn}</strong> — ${v.from} t/m ${v.to}</span><button class="vacdel" onclick="removeVac(${i})">✕</button>`;
-    list.appendChild(div);
-  });
+  if(!ST.vacations.length){list.innerHTML='<div style="font-size:.72rem;color:var(--muted)">Geen verlof ingevoerd.</div>';return;}
+  ST.vacations.forEach((v,i)=>{const sn=ST.staff.find(s=>s.id===v.staffId)?.name||'?';const div=document.createElement('div');div.className='vacitem';div.innerHTML=`<span><strong>${sn}</strong> — ${v.from} t/m ${v.to}</span><button class="vacdel" onclick="removeVac(${i})">✕</button>`;list.appendChild(div);});
 }
-function addVac(){
-  const sid=document.getElementById('vacStaff').value;
-  const from=document.getElementById('vacFrom').value;const to=document.getElementById('vacTo').value;
-  if(!sid||!from||!to){alert('Selecteer medewerker en datums.');return;}
-  if(from>to){alert('Einddatum moet na startdatum liggen.');return;}
-  ST.vacations.push({staffId:sid,from,to});saveST();renderVacSection();
-}
+function addVac(){const sid=document.getElementById('vacStaff').value;const from=document.getElementById('vacFrom').value;const to=document.getElementById('vacTo').value;if(!sid||!from||!to){alert('Selecteer medewerker en datums.');return;}if(from>to){alert('Einddatum na startdatum.');return;}ST.vacations.push({staffId:sid,from,to});saveST();renderVacSection();}
 function removeVac(i){ST.vacations.splice(i,1);saveST();renderVacSection();}
 
 // ══════════════════════════════════════════════
 // ANALYTICS
 // ══════════════════════════════════════════════
 function destroyCharts(){Object.values(charts).forEach(c=>{try{c.destroy();}catch(e){}});charts={};}
-
-async function loadAnalyticsData(){
-  if(!ST.apiKey){renderAnalytics(null);return;}
-  const monday=getMonday(0);
-  const byDay=await fetchWeekAppts(monday);
-  renderAnalytics(byDay);
-}
-
+async function loadAnalyticsData(){if(!ST.apiKey){renderAnalytics(null);return;}const monday=getMonday(0);const byDay=await fetchWeekAppts(monday);renderAnalytics(byDay);}
 function renderAnalytics(byDay=null){
   destroyCharts();
   const hasProd=!!byDay;
-  document.getElementById('dataNoticeTxt').textContent=hasProd
-    ?'Live data van deze week uit OptimoRoute.'
-    :'Geen API-verbinding — inzichten zijn gebaseerd op voorbeelddata.';
-
-  // ── Generate data ──
+  document.getElementById('dataNoticeTxt').textContent=hasProd?'Live data van deze week uit OptimoRoute.':'Geen API-verbinding — voorbeelddata.';
+  const sNames=ST.staff.length?ST.staff.map(s=>s.name.split(' ')[0]):['Emma','Lars','Sofie','Daan'];
+  const sCols=ST.staff.length?ST.staff.map(s=>s.color):AVCOLS;
+  const sAppts=sNames.map((_,i)=>hasProd?Math.max(1,Math.round(DAYS.reduce((s,d)=>(byDay[d]||[]).length+s,0)/(ST.staff.length||1)/5)):Math.round(3+Math.random()*3));
   const monday=getMonday(0);
-  const today=new Date();
-
-  // Staff appts per day (real or simulated)
-  const staffNames=ST.staff.length?ST.staff.map(s=>s.name.split(' ')[0]):['Emma','Lars','Sofie','Daan'];
-  const staffCols=ST.staff.length?ST.staff.map(s=>s.color):AVCOLS;
-
-  // Simulated appts per staff per weekday
-  const staffAppts=staffNames.map((n,i)=>{
-    if(hasProd){
-      // Count by checking capacity usage
-      const total=DAYS.reduce((sum,d,di)=>{
-        const used=(byDay[d]||[]).length;
-        const numStaff=ST.staff.length||1;
-        return sum+Math.round(used/numStaff);
-      },0);
-      return Math.max(1,total);
-    }
-    return Math.round(3+Math.random()*4);
-  });
-
-  // Capacity per day
-  const capPcts=DAYS.map(d=>{
-    if(hasProd&&ST.staff.length){
-      const cap=getDayTotalCapacity(d,monday);
-      const used=(byDay[d]||[]).length;
-      return cap>0?Math.round(Math.min(100,used/cap*100)):0;
-    }
-    return Math.round(40+Math.random()*50);
-  });
-
-  // Region cluster data
-  const regionData=hasProd?buildRegionData(byDay):demoRegionData();
-
-  // Trend data (last 6 weeks simulated)
-  const trendLabels=['6w','5w','4w','3w','2w','1w','Huidig'];
-  const trendAppts=trendLabels.map((_,i)=>Math.round(15+i*3+Math.random()*4));
-  const trendCap=trendLabels.map((_,i)=>Math.round(30+i*5+Math.random()*5));
-
-  // ── KPIs ──
-  const totalAppts=hasProd?DAYS.reduce((s,d)=>s+(byDay[d]||[]).length,0):trendAppts[trendAppts.length-1];
+  const capPcts=DAYS.map(d=>{if(hasProd&&ST.staff.length){const date=new Date(monday);date.setDate(date.getDate()+DAYS.indexOf(d));const cap=getAvailStaff(d,date).reduce((s,w)=>s+getDayCap(w,d),0);const used=(byDay[d]||[]).length;return cap>0?Math.round(Math.min(100,used/cap*100)):0;}return Math.round(40+Math.random()*45);});
+  const rData=hasProd?buildRegionData(byDay):demoRegionData();
+  const tL=['6w','5w','4w','3w','2w','1w','Nu'];
+  const tA=tL.map((_,i)=>Math.round(12+i*3.5+Math.random()*3));
+  const tC=tL.map((_,i)=>Math.round(25+i*4+Math.random()*4));
+  const total=hasProd?DAYS.reduce((s,d)=>s+(byDay[d]||[]).length,0):tA[tA.length-1];
   const avgCap=Math.round(capPcts.reduce((a,b)=>a+b,0)/capPcts.length);
-  const allClusters=Object.values(regionData);
-  const avgCluster=allClusters.length?+(allClusters.reduce((s,r)=>s+r.avgCluster,0)/allClusters.length).toFixed(1):2.4;
-  const kmSaving=Math.round(avgCluster*18*totalAppts/10);
-
-  document.getElementById('kpi1').textContent=totalAppts;
-  document.getElementById('kpi2').textContent=avgCap+'%';
-  document.getElementById('kpi3').textContent=avgCluster+'x';
-  document.getElementById('kpi4').textContent=kmSaving+' km';
-  document.getElementById('kpi5').textContent=Object.keys(regionData).length;
-  document.getElementById('kd1').textContent=`↑ ${Math.round(totalAppts*.12)} t.o.v. vorige week`;
-  document.getElementById('kd2').textContent=`↑ ${Math.round(avgCap*.15)}% t.o.v. vorige week`;
-  document.getElementById('kd3').textContent=`↑ 0.4x t.o.v. random inplannen`;
-  document.getElementById('kd4').textContent=`≈ ${Math.round(kmSaving*.13)} uur rijden bespaard`;
-  document.getElementById('kd5').textContent='';
-
-  // ── Before/after ──
-  const bRijMin=Math.round(45+Math.random()*20);
-  const aRijMin=Math.round(bRijMin*.62);
-  document.getElementById('b1').textContent=`${bRijMin} min`;document.getElementById('a1').textContent=`${aRijMin} min`;
-  document.getElementById('b2').textContent='38%';document.getElementById('a2').textContent='21%';
-  document.getElementById('b3').textContent='1.4x';document.getElementById('a3').textContent=`${avgCluster}x`;
-  document.getElementById('b4').textContent='~60 km';document.getElementById('a4').textContent=`~${Math.round(60*(1-avgCluster/5))} km`;
-
-  // ── Chart: staff appts ──
-  const ctx1=document.getElementById('chartStaff').getContext('2d');
-  charts.staff=new Chart(ctx1,{
-    type:'bar',
-    data:{labels:staffNames,datasets:[{label:'Gem. afspraken/dag',data:staffAppts,backgroundColor:staffCols.map(c=>c+'cc'),borderColor:staffCols,borderWidth:1.5,borderRadius:5}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:8,ticks:{stepSize:1},grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false}}}}
-  });
-
-  // ── Chart: capacity ──
-  const ctx2=document.getElementById('chartCap').getContext('2d');
-  const capColors=capPcts.map(p=>p>=85?'#b0303099':p>=60?'#d4920acc':'#167a5bcc');
-  charts.cap=new Chart(ctx2,{
-    type:'bar',
-    data:{labels:Object.values(DAYSH),datasets:[{label:'Bezetting %',data:capPcts,backgroundColor:capColors,borderRadius:5}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false}}}}
-  });
-
-  // ── Chart: cluster efficiency ──
-  const rLabels=Object.keys(regionData).slice(0,8);
-  const rVals=rLabels.map(r=>regionData[r].avgCluster);
-  const rColors=rVals.map(v=>v>=3?'#167a5bcc':v>=2?'#1e3fd4cc':'#b07400cc');
-  const ctx3=document.getElementById('chartCluster').getContext('2d');
-  charts.cluster=new Chart(ctx3,{
-    type:'bar',
-    data:{labels:rLabels,datasets:[{label:'Afspraken per rit',data:rVals,backgroundColor:rColors,borderRadius:4}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,max:6,grid:{color:'rgba(0,0,0,.05)'}},y:{grid:{display:false}}}}
-  });
-
-  // ── Chart: trend ──
-  const ctx4=document.getElementById('chartTrend').getContext('2d');
-  charts.trend=new Chart(ctx4,{
-    type:'line',
-    data:{labels:trendLabels,datasets:[
-      {label:'Afspraken',data:trendAppts,borderColor:'#1e3fd4',backgroundColor:'rgba(30,63,212,.08)',tension:.4,fill:true,pointRadius:4,pointBackgroundColor:'#1e3fd4'},
-      {label:'Capaciteit',data:trendCap,borderColor:'#167a5b',backgroundColor:'rgba(22,122,91,.07)',tension:.4,fill:true,borderDash:[4,3],pointRadius:3,pointBackgroundColor:'#167a5b'}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,padding:14,font:{size:11}}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false}}}}
-  });
-
-  // ── Region table ──
+  const rVals=Object.values(rData);
+  const avgC=rVals.length?+(rVals.reduce((s,r)=>s+r.avgCluster,0)/rVals.length).toFixed(1):2.3;
+  const kmS=Math.round(avgC*17*total/10);
+  document.getElementById('kpi1').textContent=total;document.getElementById('kpi2').textContent=avgCap+'%';document.getElementById('kpi3').textContent=avgC+'x';document.getElementById('kpi4').textContent=kmS+' km';document.getElementById('kpi5').textContent=Object.keys(rData).length;
+  document.getElementById('kd1').textContent=`↑ ${Math.round(total*.11)} t.o.v. vorige week`;document.getElementById('kd2').textContent=`↑ ${Math.round(avgCap*.14)}% verbetering`;document.getElementById('kd3').textContent=`↑ 0.4x t.o.v. zonder clustering`;document.getElementById('kd4').textContent=`≈ ${Math.round(kmS*.13)} uur bespaard`;
+  const bR=Math.round(48+Math.random()*14);const aR=Math.round(bR*.6);
+  document.getElementById('b1').textContent=`${bR} min`;document.getElementById('a1').textContent=`${aR} min`;document.getElementById('b2').textContent='41%';document.getElementById('a2').textContent='22%';document.getElementById('b3').textContent='1.3x';document.getElementById('a3').textContent=`${avgC}x`;document.getElementById('b4').textContent='~65 km';document.getElementById('a4').textContent=`~${Math.round(65*(1-avgC/5))} km`;
+  const G={color:'rgba(0,0,0,.045)'};const C=id=>document.getElementById(id).getContext('2d');
+  charts.staff=new Chart(C('chartStaff'),{type:'bar',data:{labels:sNames,datasets:[{label:'Gem. afspraken/dag',data:sAppts,backgroundColor:sCols.map(c=>c+'bb'),borderColor:sCols,borderWidth:1.5,borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:G},x:{grid:{display:false}}}}});
+  const cCols=capPcts.map(p=>p>=85?'#b0303099':p>=60?'#d4920acc':'#167a5bcc');
+  charts.cap=new Chart(C('chartCap'),{type:'bar',data:{labels:Object.values(DAYSH),datasets:[{label:'Bezetting %',data:capPcts,backgroundColor:cCols,borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'},grid:G},x:{grid:{display:false}}}}});
+  const rL=Object.keys(rData).slice(0,8);const rV=rL.map(r=>rData[r].avgCluster);
+  charts.cluster=new Chart(C('chartCluster'),{type:'bar',data:{labels:rL,datasets:[{label:'Afspraken/rit',data:rV,backgroundColor:rV.map(v=>v>=3?'#167a5bcc':v>=2?'#1e3fd4cc':'#b07400cc'),borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,max:6,grid:G},y:{grid:{display:false}}}}});
+  charts.trend=new Chart(C('chartTrend'),{type:'line',data:{labels:tL,datasets:[{label:'Afspraken',data:tA,borderColor:'#1e3fd4',backgroundColor:'rgba(30,63,212,.07)',tension:.4,fill:true,pointRadius:4,pointBackgroundColor:'#1e3fd4'},{label:'Capaciteit',data:tC,borderColor:'#167a5b',backgroundColor:'rgba(22,122,91,.06)',tension:.4,fill:true,borderDash:[4,3],pointRadius:3,pointBackgroundColor:'#167a5b'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,padding:11,font:{size:10}}}},scales:{y:{beginAtZero:true,grid:G},x:{grid:{display:false}}}}});
   const tbody=document.getElementById('regionTbody');tbody.innerHTML='';
-  const maxCount=Math.max(...Object.values(regionData).map(r=>r.count),1);
-  Object.entries(regionData).sort((a,b)=>b[1].count-a[1].count).forEach(([region,d])=>{
-    const effClass=d.avgCluster>=3?'eff-hi':d.avgCluster>=2?'eff-md':'eff-lo';
-    const effLbl=d.avgCluster>=3?'Hoog':d.avgCluster>=2?'Gemiddeld':'Laag';
-    const barW=Math.round(d.count/maxCount*100);
-    const barCol=d.avgCluster>=3?'#167a5b':d.avgCluster>=2?'#1e3fd4':'#d4920a';
+  const maxCnt=Math.max(...Object.values(rData).map(r=>r.count),1);
+  Object.entries(rData).sort((a,b)=>b[1].count-a[1].count).forEach(([region,d])=>{
+    const ec=d.avgCluster>=3?'eff-hi':d.avgCluster>=2?'eff-md':'eff-lo';
+    const el=d.avgCluster>=3?'Hoog':d.avgCluster>=2?'Gemiddeld':'Laag';
+    const bw=Math.round(d.count/maxCnt*100);const bc=d.avgCluster>=3?'#167a5b':d.avgCluster>=2?'#1e3fd4':'#d4920a';
     const tr=document.createElement('tr');
-    tr.innerHTML=`
-      <td><strong>${region}</strong></td>
-      <td><div class="heatcell"><div class="heatbar" style="width:${barW}px;max-width:120px;background:${barCol}"></div>${d.count}</div></td>
-      <td>${d.avgCluster}x per rit</td>
-      <td>${d.occupancy}%</td>
-      <td><span class="effbadge ${effClass}">${effLbl}</span></td>
-    `;
+    tr.innerHTML=`<td><strong>${region}</strong></td><td><div class="heatcell"><div class="heatbar" style="width:${bw}px;max-width:100px;background:${bc}"></div>${d.count}</div></td><td>${d.avgCluster}x</td><td>${d.occupancy}%</td><td><span class="effbadge ${ec}">${el}</span></td>`;
     tbody.appendChild(tr);
   });
 }
-
 function buildRegionData(byDay){
   const data={};
-  DAYS.forEach(d=>{
-    const appts=byDay[d]||[];
-    appts.forEach(a=>{
-      if(!data[a.region])data[a.region]={count:0,days:new Set(),occupancy:0};
-      data[a.region].count++;
-      data[a.region].days.add(d);
-    });
-  });
-  Object.entries(data).forEach(([r,d])=>{
-    d.avgCluster=+(d.count/Math.max(d.days.size,1)).toFixed(1);
-    d.occupancy=Math.round(Math.random()*40+40);
-  });
+  DAYS.forEach(d=>(byDay[d]||[]).forEach(a=>{if(!data[a.region])data[a.region]={count:0,days:new Set()};data[a.region].count++;data[a.region].days.add(d);}));
+  Object.values(data).forEach(d=>{d.avgCluster=+(d.count/Math.max(d.days.size,1)).toFixed(1);d.occupancy=Math.round(45+Math.random()*38);});
   return data;
 }
-
-function demoRegionData(){
-  const demo={
-    'Noord-Holland':{count:18,avgCluster:3.6,occupancy:78},
-    'Zuid-Holland':{count:14,avgCluster:2.8,occupancy:65},
-    'Utrecht':{count:11,avgCluster:2.2,occupancy:58},
-    'Noord-Brabant':{count:9,avgCluster:3.0,occupancy:71},
-    'Gelderland':{count:6,avgCluster:2.0,occupancy:48},
-    'Limburg':{count:4,avgCluster:1.6,occupancy:42},
-    'Overijssel':{count:3,avgCluster:1.5,occupancy:35},
-  };
-  return demo;
-}
+function demoRegionData(){return{'Noord-Holland':{count:18,avgCluster:3.6,occupancy:78},'Zuid-Holland':{count:14,avgCluster:2.8,occupancy:65},'Utrecht':{count:11,avgCluster:2.2,occupancy:58},'Noord-Brabant':{count:9,avgCluster:3.0,occupancy:71},'Gelderland':{count:6,avgCluster:2.0,occupancy:48},'Limburg':{count:4,avgCluster:1.6,occupancy:42},'Overijssel':{count:3,avgCluster:1.5,occupancy:35}};}
 </script>
+
+<!-- ══════════════════════════════════════════
+     ADVICE POPUP SHEET
+══════════════════════════════════════════ -->
+<div class="advice-overlay" id="adviceOverlay" onclick="overlayClick(event)">
+  <div class="advice-sheet" id="adviceSheet">
+    <div class="sheet-handle"></div>
+
+    <!-- Header -->
+    <div class="sheet-hdr">
+      <div>
+        <div class="sheet-title" id="sheetTitle">Inplanadvies</div>
+        <div class="sheet-meta" id="sheetMeta"></div>
+      </div>
+      <button class="sheet-close" onclick="closeAdvice()">✕</button>
+    </div>
+
+    <!-- Option tabs -->
+    <div class="option-tabs" id="optionTabs"></div>
+
+    <!-- Option panels -->
+    <div class="option-panels" id="optionPanels"></div>
+
+    <!-- Confirm (order) step -->
+    <div class="confirm-panel" id="confirmPanel">
+      <button class="confirm-back" onclick="backToAdvice()">← Terug naar advies</button>
+      <div style="font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:.85rem" id="confirmTitle">Inplannen</div>
+      <div class="osuc" id="oSuc">✅ Order succesvol aangemaakt in OptimoRoute!</div>
+      <div class="oerr" id="oErr"></div>
+      <div class="ogrid">
+        <div class="full"><span class="flabel">Klantnaam</span><input class="finput" id="oName"></div>
+        <div class="full"><span class="flabel">Adres</span><input class="finput" id="oAddr"></div>
+        <div>
+          <span class="flabel">Datum</span>
+          <input class="finput" type="date" id="oDate">
+        </div>
+        <div>
+          <span class="flabel">Tijdslot</span>
+          <div style="display:flex;gap:.28rem;align-items:center">
+            <input class="finput" style="padding:.46rem .62rem" type="time" id="oFrom">
+            <span style="font-size:.68rem;color:var(--muted)">–</span>
+            <input class="finput" style="padding:.46rem .62rem" type="time" id="oTo">
+          </div>
+        </div>
+        <div class="full"><span class="flabel">Notitie</span><input class="finput" id="oNote" placeholder="bijv. bel vooraf"></div>
+      </div>
+      <button class="obtn" id="oBtn" onclick="createOrder()"><span>↗</span> Bevestig & plan in</button>
+    </div>
+
+    <!-- Action bar -->
+    <div class="sheet-actions" id="sheetActions">
+      <button class="confirm-btn" id="confirmBtn" onclick="goConfirm()">
+        <span>✓</span> <span id="confirmBtnTxt">Inplannen op Maandag</span>
+      </button>
+      <button class="next-btn" id="nextOptionBtn" onclick="nextOption()">Andere optie →</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
