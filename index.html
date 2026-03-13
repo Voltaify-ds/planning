@@ -586,8 +586,8 @@ nav{background:var(--ink);height:52px;display:flex;align-items:center;justify-co
     <div class="drfield" style="max-width:170px">
       <label>Cluster methode</label>
       <select id="clusterMethod">
-        <option value="province">Provincie</option>
-        <option value="postal2" selected>Postcode 2-cijf.</option>
+        <option value="province" selected>Provincie</option>
+        <option value="postal2">Postcode 2-cijf.</option>
         <option value="postal4">Postcode 4-cijf.</option>
       </select>
     </div>
@@ -1131,7 +1131,7 @@ function getRegion(pc,m){
   const n=parseInt(digs.slice(0,4));
   const n2=parseInt(digs.slice(0,2));
   // postal2/postal4 modes for advanced clustering
-  if(m==='postal2')return(n2||'?')+'00-regio';
+  if(m==='postal2')return PC4PROV[n]||PC2PROV[n2]||'Onbekend'; // postal2 now also shows province
   if(m==='postal4')return digs.slice(0,4);
   // Province mode (default): 4-digit override first, then 2-digit lookup
   return PC4PROV[n]||PC2PROV[n2]||'Onbekend';
@@ -1425,24 +1425,34 @@ async function parseOrders(orders,monday){
     if(orders.indexOf(o)<2)dbg('order timeWindows sample',{id:o.id,tws:JSON.stringify(tws),d_keys:Object.keys(d).filter(k=>k.toLowerCase().includes('time')||k.toLowerCase().includes('window')||k.toLowerCase().includes('sched'))});
     const tw=Array.isArray(tws)&&tws.length>0?tws[0]:tws||d.timeWindow||o.timeWindow||null;
     let slot=null;
-    if(tw){
-      // tw can be: {timeFrom:"0900",timeTo:"1100"} or {timeFrom:"09:00"} or {from:540} (minutes) or number
-      let rawFrom=tw.timeFrom||tw.time_from||tw.from||tw.start||tw[0]||'';
-      if(typeof rawFrom==='number'){
-        // minutes since midnight
-        const hh=Math.floor(rawFrom/60);
-        rawFrom=String(hh).padStart(2,'0')+'00';
-      } else {
-        rawFrom=String(rawFrom).replace(':','').replace(/\D/g,'').padStart(4,'0');
+    // Universal slot detector: handles every format OptimoRoute might send
+    function detectHour(raw){
+      if(raw===null||raw===undefined)return NaN;
+      if(typeof raw==='number'){
+        // Could be minutes (540=9:00) or seconds (32400=9:00) or hour (9)
+        if(raw>1440)return Math.floor(raw/3600); // seconds
+        if(raw>24)return Math.floor(raw/60);     // minutes
+        return raw;                               // already hour
       }
-      const h=parseInt(rawFrom.slice(0,2));
+      const s=String(raw).trim();
+      // "9 AM" or "9 AM – 11 AM"
+      const ampm=s.match(/(\d+)\s*(AM|PM)/i);
+      if(ampm){let h=parseInt(ampm[1]);if(/PM/i.test(ampm[2])&&h!==12)h+=12;if(/AM/i.test(ampm[2])&&h===12)h=0;return h;}
+      // "09:00" or "0900" or "9:00"
+      const nums=s.replace(/[^\d]/g,'');
+      if(nums.length>=4)return parseInt(nums.slice(0,2));
+      if(nums.length>0)return parseInt(nums);
+      return NaN;
+    }
+    if(tw){
+      const h=detectHour(tw.timeFrom||tw.time_from||tw.from||tw.start||tw[0]);
       if(h===9)slot='09-11';
       else if(h===10)slot='10-12';
       else if(h===13)slot='13-15';
       else if(h===17)slot='17-19';
       else if(h===20)slot='20-22';
     }
-    // Fallback: try scheduledAt time if no timeWindow matched
+    // Fallback: scheduledAt datetime
     if(!slot){
       const sAt=d.scheduledAt||d.scheduled_at||d.scheduledStartTime||o.scheduledAt||'';
       if(sAt){
