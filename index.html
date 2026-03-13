@@ -585,7 +585,7 @@ nav{background:var(--ink);height:52px;display:flex;align-items:center;justify-co
     </div>
     <div class="drfield" style="max-width:170px">
       <label>Cluster methode</label>
-      <select id="clusterMethod">
+      <select id="clusterMethod" onchange="ST.clusterMethod=this.value;saveST(true);cachedAppts=null;lastWeekKey=null;">
         <option value="province" selected>Provincie</option>
         <option value="postal2">Postcode 2-cijf.</option>
         <option value="postal4">Postcode 4-cijf.</option>
@@ -987,7 +987,9 @@ function loadST(){
     const local=JSON.parse(localStorage.getItem('ps4_local')||'{}');
     const shared=JSON.parse(localStorage.getItem('ps4_shared')||'{}');
     ST.apiKey=local.apiKey||'';
-    ST.clusterMethod=local.clusterMethod||'province';
+    // Reset postal4/postal2 to province (cleaner default)
+    const savedMethod=local.clusterMethod||'province';
+    ST.clusterMethod=savedMethod;
     ST.firebaseUrl=local.firebaseUrl||'';
     if(shared.staff)ST.staff=shared.staff;
     if(shared.vacations)ST.vacations=shared.vacations;
@@ -1445,7 +1447,7 @@ async function parseOrders(orders,monday){
       return NaN;
     }
     if(tw){
-      const h=detectHour(tw.timeFrom||tw.time_from||tw.from||tw.start||tw[0]);
+      const h=detectHour(tw.TWFrom||tw.twFrom||tw.timeFrom||tw.time_from||tw.from||tw.start||tw[0]);
       if(h===9)slot='09-11';
       else if(h===10)slot='10-12';
       else if(h===13)slot='13-15';
@@ -1995,13 +1997,18 @@ async function testTimeWindows(){
       const name=d.orderNo||o.name||'?';
       dbg(`Order ${i+1}: ${name}`,{
         timeWindows: JSON.stringify(tw),
+        TWFrom: (tw&&Array.isArray(tw)&&tw[0])?(tw[0].TWFrom||tw[0].twFrom||tw[0].timeFrom||'–'):'–',
         timeWindow: JSON.stringify(d.timeWindow||o.timeWindow),
         scheduledAt: d.scheduledAt||o.scheduledAt||'–',
         dataKeys: Object.keys(d).join(',')
       });
     });
     // Summary
-    const withTw=orders.filter(o=>{const d=o.data||o;return(d.timeWindows||d.time_windows||o.timeWindows||[]).length>0;});
+    const withTw=orders.filter(o=>{
+      const d=o.data||o;
+      const tws=d.timeWindows||d.time_windows||o.timeWindows||[];
+      return Array.isArray(tws)&&tws.length>0&&(tws[0].TWFrom||tws[0].twFrom||tws[0].timeFrom||tws[0].from);
+    });
     dbg(`Samenvatting: ${withTw.length}/${orders.length} orders hebben tijdvensters`);
   }catch(e){dbg('Fout',e.message);}
 }
