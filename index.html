@@ -987,7 +987,7 @@ function loadST(){
     const local=JSON.parse(localStorage.getItem('ps4_local')||'{}');
     const shared=JSON.parse(localStorage.getItem('ps4_shared')||'{}');
     ST.apiKey=local.apiKey||'';
-    ST.clusterMethod=local.clusterMethod||'postal2';
+    ST.clusterMethod=local.clusterMethod||'province';
     ST.firebaseUrl=local.firebaseUrl||'';
     if(shared.staff)ST.staff=shared.staff;
     if(shared.vacations)ST.vacations=shared.vacations;
@@ -998,7 +998,7 @@ function loadST(){
     if(!ST.apiKey&&legacy.apiKey)ST.apiKey=legacy.apiKey;
   }catch(e){dbg('loadST error',e.message);}
   document.getElementById('apiKey').value=ST.apiKey||'';
-  document.getElementById('clusterMethod').value=ST.clusterMethod||'postal2';
+  document.getElementById('clusterMethod').value=ST.clusterMethod||'province';
   document.getElementById('firebaseUrl').value=ST.firebaseUrl||'';
   if(ST.apiKey)setApiSt(true,'Gekoppeld');
   if(ST.firebaseUrl)loadFromFirebase();
@@ -1093,18 +1093,48 @@ function wkDates(mon){return DAYS.map((d,i)=>{const dt=new Date(mon);dt.setDate(
 function fmtPC(el){let v=el.value.replace(/\s/g,'').toUpperCase();if(v.length>4)v=v.slice(0,4)+' '+v.slice(4,6);el.value=v;}
 function parsePC(r){return(r||'').replace(/\s/g,'').toUpperCase();}
 function validPC(p){return/^\d{4}[A-Z]{2}$/.test(p);}
+// 2-digit postcode prefix → province (verified against BAG/CBS data)
+const PC2PROV={
+  10:'Noord-Holland',11:'Noord-Holland',12:'Noord-Holland',13:'Noord-Holland',14:'Noord-Holland',
+  15:'Noord-Holland',16:'Noord-Holland',17:'Noord-Holland',18:'Noord-Holland',19:'Noord-Holland',
+  20:'Zuid-Holland',21:'Zuid-Holland',22:'Zuid-Holland',23:'Zuid-Holland',24:'Zuid-Holland',
+  25:'Zuid-Holland',26:'Zuid-Holland',27:'Zuid-Holland',28:'Zuid-Holland',29:'Zuid-Holland',
+  30:'Zuid-Holland',31:'Zuid-Holland',32:'Zuid-Holland',33:'Zuid-Holland',34:'Zuid-Holland',
+  35:'Zuid-Holland',36:'Zuid-Holland',37:'Utrecht',38:'Utrecht',39:'Utrecht',
+  40:'Gelderland',41:'Gelderland',42:'Gelderland',43:'Gelderland',44:'Gelderland',
+  45:'Zeeland',46:'Zeeland',47:'Noord-Brabant',48:'Noord-Brabant',49:'Noord-Brabant',
+  50:'Noord-Brabant',51:'Noord-Brabant',52:'Noord-Brabant',53:'Noord-Brabant',54:'Noord-Brabant',
+  55:'Noord-Brabant',56:'Noord-Brabant',57:'Noord-Brabant',58:'Noord-Brabant',59:'Noord-Brabant',
+  60:'Limburg',61:'Limburg',62:'Limburg',63:'Limburg',64:'Limburg',
+  65:'Gelderland',66:'Gelderland',67:'Gelderland',68:'Gelderland',69:'Gelderland',
+  70:'Overijssel',71:'Overijssel',72:'Overijssel',73:'Overijssel',74:'Gelderland',
+  75:'Gelderland',76:'Gelderland',77:'Gelderland',78:'Drenthe',79:'Drenthe',
+  80:'Friesland',81:'Friesland',82:'Friesland',83:'Friesland',84:'Friesland',
+  85:'Friesland',86:'Drenthe',87:'Drenthe',88:'Groningen',89:'Groningen',
+  90:'Groningen',91:'Groningen',92:'Groningen',93:'Groningen',94:'Drenthe',
+  95:'Drenthe',96:'Drenthe',97:'Groningen',98:'Groningen',99:'Friesland',
+};
+// 4-digit overrides for enclaves (Utrecht cities in Zuid-Holland range etc.)
+const PC4PROV={
+  3430:'Utrecht',3431:'Utrecht',3432:'Utrecht',3433:'Utrecht',3434:'Utrecht',3435:'Utrecht',
+  3436:'Utrecht',3437:'Utrecht',3438:'Utrecht',3439:'Utrecht', // Nieuwegein
+  3440:'Utrecht',3441:'Utrecht',3442:'Utrecht',3443:'Utrecht',3444:'Utrecht', // IJsselstein
+  3450:'Utrecht',3451:'Utrecht',3452:'Utrecht',3453:'Utrecht',3454:'Utrecht', // Vleuten
+  3460:'Utrecht',3461:'Utrecht',3462:'Utrecht',3463:'Utrecht',3464:'Utrecht', // Lopik
+  3700:'Utrecht',3701:'Utrecht',3702:'Utrecht',3703:'Utrecht',3704:'Utrecht', // Zeist e.o.
+  3980:'Utrecht',3981:'Utrecht',3982:'Utrecht',3983:'Utrecht',3984:'Utrecht', // Bunnik
+};
 function getRegion(pc,m){
   if(!pc)return'Onbekend';
-  const digs=(pc.match(/^\d+/)||[''])[0];
-  if(m==='postal2')return digs.slice(0,2)+'00';
-  if(m==='postal4')return digs.slice(0,4);
+  const digs=(pc.replace(/\s/g,'').match(/^\d+/)||[''])[0];
+  if(!digs)return'Onbekend';
   const n=parseInt(digs.slice(0,4));
-  if(n<2000)return'Noord-Holland';if(n<3000)return'Zuid-Holland';
-  if(n<4000)return'Utrecht';if(n<4500)return'Zeeland';
-  if(n<6000)return'Noord-Brabant';if(n<6600)return'Limburg';
-  if(n<7000)return'Gelderland';if(n<8000)return'Overijssel';
-  if(n<9000)return'Friesland';if(n<9400)return'Groningen';
-  if(n<9700)return'Drenthe';return'Groningen';
+  const n2=parseInt(digs.slice(0,2));
+  // postal2/postal4 modes for advanced clustering
+  if(m==='postal2')return(n2||'?')+'00-regio';
+  if(m==='postal4')return digs.slice(0,4);
+  // Province mode (default): 4-digit override first, then 2-digit lookup
+  return PC4PROV[n]||PC2PROV[n2]||'Onbekend';
 }
 
 // pc → approximate lat/lng for map fallback
@@ -1262,7 +1292,7 @@ async function loadWeekApptsAndPlotMap(){
     dbg(`Kaart: ${total} afspraken geplot`);
   }
 }
-function slotColor(slot){return{'09-11':'#f59e0b','10-12':'#f59e0b','13-15':'#1e3fd4','17-19':'#6b3fa0','20-22':'#167a5b'}[slot]||'#aaaaaa';}
+function slotColor(slot){return{'09-11':'#f59e0b','10-12':'#d97706','13-15':'#1e3fd4','17-19':'#6b3fa0','20-22':'#167a5b'}[slot]||'#94a3b8';}
 function plotApptsOnMap(byDay,monday){
   clearMapMarkers();
   const allCoords=[];
@@ -1435,8 +1465,13 @@ async function parseOrders(orders,monday){
     // loc.address is typically the full address string in OptimoRoute
     const locAddrStr=typeof loc.address==='string'?loc.address:
                      typeof loc==='string'?loc:'';
-    const addrParts=[locAddrStr||loc.street||'', loc.city||''].filter(Boolean);
-    const addrStr=addrParts.join(', ')||(pc?pc+', Nederland':'');
+    // OptimoRoute address format: "Street Nr, City, Province DDDD LL"
+    // Clean it up: strip province name if it's redundant (region shown separately)
+    let rawAddr=locAddrStr||loc.street||'';
+    // Ensure postcode has space: "6832HW" → "6832 HW"
+    rawAddr=rawAddr.replace(/\b(\d{4})([A-Za-z]{2})\b/g,'$1 $2');
+    const addrParts=[rawAddr, loc.city||''].filter(Boolean);
+    const addrStr=addrParts.join(', ')||(pc?pc.slice(0,4)+' '+pc.slice(4,6)+', Nederland':'');
 
     // Name: orderNo is inside data{}
     const name=d.orderNo||d.order_no||d.name||d.customField1||
@@ -2050,10 +2085,10 @@ function renderDayContent(d){
         <div class="appt-info">
           <div class="appt-name">${a.name||'Afspraak'}</div>
           <div class="appt-addr">${a.address||a.postalCode||'–'}</div>
-          <div class="appt-meta">${a.postalCode?a.postalCode+' · ':''}</div>
+          <div class="appt-meta" style="display:none"></div>
         </div>
-        <div class="appt-time">${sc.label}</div>
-        <div class="appt-region">${a.region||'–'}</div>
+        <div class="appt-time" style="color:${a.slot?'var(--ink2)':'var(--muted)'}">${a.slot?sc.label:'Vrij tijdslot'}</div>
+        <div class="appt-region" style="background:${a.region&&a.region!=='Onbekend'?'var(--bbg)':'var(--bg)'};color:${a.region&&a.region!=='Onbekend'?'var(--blue)':'var(--muted)'};">${a.region||'–'}</div>
       </div>`;
     }).join('');
 
