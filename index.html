@@ -1109,9 +1109,38 @@ function getRegion(pc,m){
 
 // pc → approximate lat/lng for map fallback
 function pcToLL(pc){
+  // More accurate Dutch postcode → approximate coordinates
+  // Based on Dutch postcode geographic distribution
   const n=parseInt((pc||'0').slice(0,4))||5000;
-  const t=Math.max(0,Math.min(1,(n-1000)/8000));
-  return[51.35+t*2.1+Math.sin(t*Math.PI*1.5)*0.3, 3.85+t*3.0+Math.cos(t*Math.PI)*0.5];
+  // Rough zones based on first 2 digits
+  const z=Math.floor(n/100);
+  const latlng={
+    10:[52.37,4.90],11:[52.31,4.85],12:[52.28,4.78],13:[52.26,4.71],14:[52.32,4.97],
+    15:[52.40,4.83],16:[52.44,4.83],17:[52.71,4.82],18:[52.62,4.74],19:[52.50,4.77],
+    20:[52.18,4.44],21:[52.12,4.30],22:[52.08,4.27],23:[52.04,4.40],24:[51.99,4.40],
+    25:[52.01,4.36],26:[51.96,4.48],27:[52.05,4.48],28:[52.08,4.62],29:[52.09,4.70],
+    30:[51.92,4.47],31:[51.93,4.53],32:[51.90,4.62],33:[51.85,4.64],34:[51.86,4.74],
+    35:[51.92,4.77],36:[51.98,4.87],37:[52.00,5.05],38:[52.07,5.10],39:[52.10,5.20],
+    40:[51.83,5.85],41:[51.82,5.96],42:[51.86,6.09],43:[51.92,6.00],44:[51.97,5.90],
+    45:[51.96,5.79],46:[51.90,5.67],47:[51.89,5.55],48:[51.85,5.48],49:[51.84,5.40],
+    50:[51.68,5.31],51:[51.69,5.46],52:[51.75,5.52],53:[51.81,5.35],54:[51.74,5.48],
+    55:[51.70,5.62],56:[51.78,5.76],57:[51.81,5.85],58:[51.90,5.95],59:[51.83,5.80],
+    60:[51.84,5.85],61:[51.90,5.92],62:[51.84,6.00],63:[51.79,6.10],64:[51.76,6.20],
+    65:[51.73,5.95],66:[51.66,5.98],67:[51.65,6.05],68:[51.72,6.18],69:[51.78,6.26],
+    70:[52.37,6.06],71:[52.34,6.18],72:[52.26,6.20],73:[52.18,6.22],74:[52.12,6.38],
+    75:[52.07,6.43],76:[52.02,6.52],77:[51.95,6.56],78:[51.88,6.56],79:[52.20,6.50],
+    80:[52.50,6.09],81:[52.47,6.20],82:[52.57,6.35],83:[52.63,6.36],84:[52.68,6.49],
+    85:[52.72,6.56],86:[52.76,6.62],87:[52.90,6.67],88:[52.95,6.56],89:[52.82,6.50],
+    90:[53.22,6.57],91:[53.27,6.64],92:[53.19,6.73],93:[53.13,6.80],94:[52.99,6.83],
+    95:[53.04,6.92],96:[53.12,6.95],97:[53.20,7.00],98:[53.40,7.05],99:[53.37,6.83],
+  }[z];
+  if(latlng){
+    // Add small offset based on last 2 digits to spread within zone
+    const off=((n%100)/100-.5)*0.06;
+    return[latlng[0]+off,latlng[1]+off*1.5];
+  }
+  // Fallback: center of Netherlands
+  return[52.15+((n-5000)/10000),5.3+((n-5000)/15000)];
 }
 
 // ══════════════════════════════════════════════
@@ -1233,7 +1262,7 @@ async function loadWeekApptsAndPlotMap(){
     dbg(`Kaart: ${total} afspraken geplot`);
   }
 }
-function slotColor(slot){return{'09-11':'#f59e0b','10-12':'#f59e0b','13-15':'#1e3fd4','17-19':'#6b3fa0','20-22':'#167a5b'}[slot]||'#888888';}
+function slotColor(slot){return{'09-11':'#f59e0b','10-12':'#f59e0b','13-15':'#1e3fd4','17-19':'#6b3fa0','20-22':'#167a5b'}[slot]||'#aaaaaa';}
 function plotApptsOnMap(byDay,monday){
   clearMapMarkers();
   const allCoords=[];
@@ -1342,10 +1371,17 @@ async function parseOrders(orders,monday){
     const loc=d.location||d.locationData||o.location||{};
     const addrObj=d.address||o.address||{};
 
-    // Postcode
-    const pc=((loc.postalCode||loc.postal_code||loc.zip||
+    // Postcode — try dedicated fields first, then extract from address string
+    let pcRaw=(loc.postalCode||loc.postal_code||loc.zip||
                addrObj.postalCode||addrObj.postal_code||
-               d.postalCode||d.postal_code||o.postalCode||'')+'').replace(/\s/g,'').toUpperCase();
+               d.postalCode||d.postal_code||o.postalCode||'')+'';
+    if(!pcRaw.trim()){
+      // Extract from full address string: "Street, City, Province 1234 AB" or "1234 AB" anywhere
+      const fullAddr=[loc.address||'',loc.city||'',d.notes||''].join(' ');
+      const pcMatch=fullAddr.match(/\b(\d{4})\s*([A-Za-z]{2})\b/);
+      if(pcMatch)pcRaw=pcMatch[1]+pcMatch[2];
+    }
+    const pc=pcRaw.replace(/\s/g,'').toUpperCase();
 
     // Date: inside data{} for search_orders
     const ds=(d.date||o._date||o.date||d.scheduledAt||'').slice(0,10);
@@ -1354,7 +1390,9 @@ async function parseOrders(orders,monday){
     if(idx<0||idx>4)continue;
 
     // Time windows: inside data{} — handle multiple formats
+    // Debug: log timeWindows structure for first few orders
     const tws=d.timeWindows||d.time_windows||o.timeWindows||o.time_windows||[];
+    if(orders.indexOf(o)<2)dbg('order timeWindows sample',{id:o.id,tws:JSON.stringify(tws),d_keys:Object.keys(d).filter(k=>k.toLowerCase().includes('time')||k.toLowerCase().includes('window')||k.toLowerCase().includes('sched'))});
     const tw=Array.isArray(tws)&&tws.length>0?tws[0]:tws||d.timeWindow||o.timeWindow||null;
     let slot=null;
     if(tw){
@@ -1404,11 +1442,26 @@ async function parseOrders(orders,monday){
     const name=d.orderNo||d.order_no||d.name||d.customField1||
                o.orderNo||o.name||o.customField1||'Afspraak';
 
-    const obj={name,postalCode:pc,address:addrStr,region:getRegion(pc,ST.clusterMethod),slot,lat,lng,geocoded};
+    // Final PC extraction attempt from full address string
+    let finalPc=pc;
+    if(!validPC(finalPc)){
+      const allText=[addrStr,loc.address||'',locAddrStr].join(' ');
+      const pm=allText.match(/\b(\d{4})\s*([A-Za-z]{2})\b/);
+      if(pm)finalPc=(pm[1]+pm[2]).toUpperCase();
+    }
+    const obj={name,postalCode:finalPc,address:addrStr,region:getRegion(finalPc,ST.clusterMethod),slot,lat,lng,geocoded};
     byDay[DAYS[idx]].push(obj);
 
     if((!lat||!lng)&&(addrStr||pc)){
-      toGeocode.push({obj,query:addrStr||pc});
+      // Clean up query: use postcode + city if available, or full addrStr
+      // "Biezenlaan 64, Arnhem, Gelderland 6832 HW" → "Biezenlaan 64, Arnhem, 6832 HW"
+      let geoQuery=addrStr;
+      if(finalPc&&validPC(finalPc)){
+        // Postcode + street is most accurate for Nominatim
+        const streetPart=addrStr.split(',')[0]||'';
+        geoQuery=streetPart?`${streetPart}, ${finalPc.slice(0,4)} ${finalPc.slice(4,6)}, Nederland`:`${finalPc.slice(0,4)} ${finalPc.slice(4,6)}, Nederland`;
+      }
+      toGeocode.push({obj,query:geoQuery||addrStr||pc});
     }
   }
 
@@ -1864,9 +1917,12 @@ async function testApiCall(){
       const first=data.orders[0];
       dbg('Eerste order root keys',Object.keys(first));
       dbg('Eerste order data{} keys',first.data?Object.keys(first.data):'geen data{} veld');
-      dbg('Eerste order locatie (data.location)',JSON.stringify((first.data||first).location||{}).slice(0,300));
-      dbg('Eerste order datum',(first.data||first).date||first.scheduledAt||'?');
-      dbg('Eerste order timeWindows',JSON.stringify((first.data||first).timeWindows||[]).slice(0,200));
+      const fd=first.data||first;
+      dbg('Eerste order locatie (data.location)',JSON.stringify(fd.location||{}).slice(0,300));
+      dbg('Eerste order datum',fd.date||first.scheduledAt||'?');
+      dbg('Eerste order timeWindows RAW',JSON.stringify(fd.timeWindows||fd.time_windows||'ONTBREEKT'));
+      dbg('Eerste order ALLE data{} keys',Object.keys(fd));
+      dbg('Eerste order VOLLEDIGE data{}',JSON.stringify(fd).slice(0,600));
     }
   }catch(e){dbg('TEST FOUT',e.message);}
 }
