@@ -578,6 +578,10 @@ nav{background:var(--ink);height:52px;display:flex;align-items:center;justify-co
 .ds-apply-note{font-size:.7rem;color:var(--muted);}
 .ds-day.inactive{opacity:.45;}
 .ds-day.inactive .ds-fields{pointer-events:none;}
+
+.route-tip{background:#1e3fd4;color:#fff;border:none;border-radius:7px;font-family:'Epilogue',sans-serif;font-size:.72rem;padding:.32rem .65rem;font-weight:600;}
+.route-tip::before{display:none;}
+#routeToggleBtn.active{background:var(--blue)!important;color:#fff!important;border-color:var(--blue)!important;}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 </style>
@@ -1043,6 +1047,23 @@ function loadST(){
   if(ST.firebaseUrl)loadFromFirebase();
 }
 
+
+function computeWeekStats(byDay){
+  if(!byDay)return'';
+  const total=DAYS.reduce((s,d)=>s+(byDay[d]||[]).length,0);
+  // Count unique regions per day as cluster indicator
+  let clusterTotal=0,dayCount=0;
+  DAYS.forEach(d=>{
+    const appts=byDay[d]||[];
+    if(!appts.length)return;
+    const regions=new Set(appts.map(a=>a.region||'?'));
+    clusterTotal+=appts.length/regions.size;
+    dayCount++;
+  });
+  const avgCluster=dayCount>0?(clusterTotal/dayCount).toFixed(1):'–';
+  return`· ${avgCluster}x cluster`;
+}
+
 // ── Firebase ──
 async function saveToFirebase(data){
   if(!ST.firebaseUrl)return;
@@ -1103,9 +1124,11 @@ function saveSettings(connect=false){
     if(ST.apiKey)loadWeekApptsAndPlotMap();
   }
 }
-function setApiSt(ok,txt){
+function setApiSt(ok,txt,stats){
   document.getElementById('apiLed').className='apiledge'+(ok?' on':'');
   document.getElementById('apiTxt').textContent=txt;
+  const el=document.getElementById('weekStatsTxt');
+  if(el&&stats)el.textContent=stats;
 }
 
 // ══════════════════════════════════════════════
@@ -1155,13 +1178,43 @@ const PC2PROV={
 };
 // 4-digit overrides for enclaves (Utrecht cities in Zuid-Holland range etc.)
 const PC4PROV={
-  3430:'Utrecht',3431:'Utrecht',3432:'Utrecht',3433:'Utrecht',3434:'Utrecht',3435:'Utrecht',
-  3436:'Utrecht',3437:'Utrecht',3438:'Utrecht',3439:'Utrecht', // Nieuwegein
-  3440:'Utrecht',3441:'Utrecht',3442:'Utrecht',3443:'Utrecht',3444:'Utrecht', // IJsselstein
-  3450:'Utrecht',3451:'Utrecht',3452:'Utrecht',3453:'Utrecht',3454:'Utrecht', // Vleuten
-  3460:'Utrecht',3461:'Utrecht',3462:'Utrecht',3463:'Utrecht',3464:'Utrecht', // Lopik
-  3700:'Utrecht',3701:'Utrecht',3702:'Utrecht',3703:'Utrecht',3704:'Utrecht', // Zeist e.o.
-  3980:'Utrecht',3981:'Utrecht',3982:'Utrecht',3983:'Utrecht',3984:'Utrecht', // Bunnik
+  // Nieuwegein 3430-3439
+  3430:'Utrecht',3431:'Utrecht',3432:'Utrecht',3433:'Utrecht',3434:'Utrecht',3435:'Utrecht',3436:'Utrecht',3437:'Utrecht',3438:'Utrecht',3439:'Utrecht',
+  // IJsselstein 3400-3419
+  3400:'Utrecht',3401:'Utrecht',3402:'Utrecht',3403:'Utrecht',3404:'Utrecht',3405:'Utrecht',3406:'Utrecht',3407:'Utrecht',3408:'Utrecht',3409:'Utrecht',3410:'Utrecht',3411:'Utrecht',3412:'Utrecht',3413:'Utrecht',3414:'Utrecht',3415:'Utrecht',3416:'Utrecht',3417:'Utrecht',3418:'Utrecht',3419:'Utrecht',
+  // Vleuten-De Meern 3450-3459
+  3450:'Utrecht',3451:'Utrecht',3452:'Utrecht',3453:'Utrecht',3454:'Utrecht',3455:'Utrecht',3456:'Utrecht',3457:'Utrecht',3458:'Utrecht',3459:'Utrecht',
+  // Lopik 3460-3469
+  3460:'Utrecht',3461:'Utrecht',3462:'Utrecht',3463:'Utrecht',3464:'Utrecht',3465:'Utrecht',3466:'Utrecht',3467:'Utrecht',3468:'Utrecht',3469:'Utrecht',
+  // Maarssen / Stichtse Vecht 3600-3615
+  3600:'Utrecht',3601:'Utrecht',3602:'Utrecht',3603:'Utrecht',3604:'Utrecht',3605:'Utrecht',3606:'Utrecht',3607:'Utrecht',3608:'Utrecht',3609:'Utrecht',3610:'Utrecht',3611:'Utrecht',3612:'Utrecht',3613:'Utrecht',3614:'Utrecht',3615:'Utrecht',
+  // Maartensdijk / De Bilt 3720-3729
+  3720:'Utrecht',3721:'Utrecht',3722:'Utrecht',3723:'Utrecht',3724:'Utrecht',3725:'Utrecht',3726:'Utrecht',3727:'Utrecht',3728:'Utrecht',3729:'Utrecht',
+  // Zeist 3700-3709
+  3700:'Utrecht',3701:'Utrecht',3702:'Utrecht',3703:'Utrecht',3704:'Utrecht',3705:'Utrecht',3706:'Utrecht',3707:'Utrecht',3708:'Utrecht',3709:'Utrecht',
+  // Driebergen 3970-3979
+  3970:'Utrecht',3971:'Utrecht',3972:'Utrecht',3973:'Utrecht',3974:'Utrecht',3975:'Utrecht',3976:'Utrecht',3977:'Utrecht',3978:'Utrecht',3979:'Utrecht',
+  // Bunnik 3980-3989
+  3980:'Utrecht',3981:'Utrecht',3982:'Utrecht',3983:'Utrecht',3984:'Utrecht',3985:'Utrecht',3986:'Utrecht',3987:'Utrecht',3988:'Utrecht',3989:'Utrecht',
+  // Houten 3990-3999
+  3990:'Utrecht',3991:'Utrecht',3992:'Utrecht',3993:'Utrecht',3994:'Utrecht',3995:'Utrecht',3996:'Utrecht',3997:'Utrecht',3998:'Utrecht',3999:'Utrecht',
+  // Woerden (Utrecht province) 3440-3449
+  3440:'Utrecht',3441:'Utrecht',3442:'Utrecht',3443:'Utrecht',3444:'Utrecht',3445:'Utrecht',3446:'Utrecht',3447:'Utrecht',3448:'Utrecht',3449:'Utrecht',
+  // Montfoort 3417-3421
+  3417:'Utrecht',3418:'Utrecht',3419:'Utrecht',3420:'Utrecht',3421:'Utrecht',
+  // Flevoland overrides (83xx = Friesland in 2-digit but Flevoland cities)
+  8300:'Flevoland',8301:'Flevoland',8302:'Flevoland',8303:'Flevoland',8304:'Flevoland',
+  8305:'Flevoland',8306:'Flevoland',8307:'Flevoland',8308:'Flevoland',8309:'Flevoland',
+  8310:'Flevoland',8311:'Flevoland',8312:'Flevoland',8313:'Flevoland',8314:'Flevoland',
+  8315:'Flevoland',8316:'Flevoland',8317:'Flevoland',8318:'Flevoland',8319:'Flevoland',
+  8320:'Flevoland',8321:'Flevoland',8322:'Flevoland',8323:'Flevoland',8324:'Flevoland',
+  8325:'Flevoland',8326:'Flevoland',8327:'Flevoland',8328:'Flevoland',8329:'Flevoland',
+  // Almere 1300-1399 (Noord-Holland range but Flevoland)
+  1300:'Utrecht',1301:'Utrecht',1302:'Utrecht',1303:'Utrecht',1304:'Utrecht',1305:'Utrecht',1306:'Utrecht',1307:'Utrecht',1308:'Utrecht',1309:'Utrecht',1310:'Utrecht',1311:'Utrecht',1312:'Utrecht',1313:'Utrecht',1314:'Utrecht',1315:'Utrecht',1316:'Utrecht',1317:'Utrecht',1318:'Utrecht',1319:'Utrecht',1320:'Utrecht',1321:'Utrecht',1322:'Utrecht',1323:'Utrecht',1324:'Utrecht',1325:'Utrecht',1326:'Utrecht',1327:'Utrecht',1328:'Utrecht',1329:'Utrecht',1330:'Utrecht',1331:'Utrecht',1332:'Utrecht',1333:'Utrecht',1334:'Utrecht',1335:'Utrecht',1336:'Utrecht',1337:'Utrecht',1338:'Utrecht',1339:'Utrecht',1340:'Utrecht',1341:'Utrecht',1342:'Utrecht',1343:'Utrecht',1344:'Utrecht',1345:'Utrecht',1346:'Utrecht',1347:'Utrecht',1348:'Utrecht',1349:'Utrecht',1350:'Utrecht',1351:'Utrecht',1352:'Utrecht',1353:'Utrecht',1354:'Utrecht',1355:'Utrecht',1356:'Utrecht',1357:'Utrecht',1358:'Utrecht',1359:'Utrecht',1360:'Utrecht',1361:'Utrecht',1362:'Utrecht',1363:'Utrecht',1364:'Utrecht',1365:'Utrecht',1366:'Utrecht',1367:'Utrecht',1368:'Utrecht',1369:'Utrecht',1370:'Utrecht',1371:'Utrecht',1372:'Utrecht',1373:'Utrecht',1374:'Utrecht',1375:'Utrecht',1376:'Utrecht',1377:'Utrecht',1378:'Utrecht',1379:'Utrecht',1380:'Utrecht',1381:'Utrecht',1382:'Utrecht',1383:'Utrecht',1384:'Utrecht',1385:'Utrecht',1386:'Utrecht',1387:'Utrecht',1388:'Utrecht',1389:'Utrecht',1390:'Utrecht',1391:'Utrecht',1392:'Utrecht',1393:'Utrecht',1394:'Utrecht',1395:'Utrecht',1396:'Utrecht',1397:'Utrecht',1398:'Utrecht',1399:'Utrecht',
+  // Lelystad 8200-8249
+  8200:'Utrecht',8201:'Utrecht',8202:'Utrecht',8203:'Utrecht',8204:'Utrecht',8205:'Utrecht',8206:'Utrecht',8207:'Utrecht',8208:'Utrecht',8209:'Utrecht',8210:'Utrecht',8211:'Utrecht',8212:'Utrecht',8213:'Utrecht',8214:'Utrecht',8215:'Utrecht',8216:'Utrecht',8217:'Utrecht',8218:'Utrecht',8219:'Utrecht',8220:'Utrecht',8221:'Utrecht',8222:'Utrecht',8223:'Utrecht',8224:'Utrecht',8225:'Utrecht',8226:'Utrecht',8227:'Utrecht',8228:'Utrecht',8229:'Utrecht',8230:'Utrecht',8231:'Utrecht',8232:'Utrecht',8233:'Utrecht',8234:'Utrecht',8235:'Utrecht',8236:'Utrecht',8237:'Utrecht',8238:'Utrecht',8239:'Utrecht',8240:'Utrecht',8241:'Utrecht',8242:'Utrecht',8243:'Utrecht',8244:'Utrecht',8245:'Utrecht',8246:'Utrecht',8247:'Utrecht',8248:'Utrecht',8249:'Utrecht',
+  // Zeewolde 3890-3899
+  3890:'Utrecht',3891:'Utrecht',3892:'Utrecht',3893:'Utrecht',3894:'Utrecht',3895:'Utrecht',3896:'Utrecht',3897:'Utrecht',3898:'Utrecht',3899:'Utrecht',
 };
 function getRegion(pc,m){
   if(!pc)return'Onbekend';
@@ -1392,7 +1445,8 @@ async function fetchWeekAppts(monday){
     cachedAppts=await parseOrders(orders,monday);
     lastWeekKey=wk;
     const total=DAYS.reduce((s,d)=>s+(cachedAppts[d]||[]).length,0);
-    setApiSt(true,`${orders.length} orders, ${total} geplot`);
+    const kmStat=computeWeekStats(cachedAppts);
+    setApiSt(true,`${orders.length} orders, ${total} geplot`,kmStat);
     return cachedAppts;
   }catch(e){
     dbg('search_orders FOUT — probeer get_routes fallback',e.message);
@@ -1417,7 +1471,8 @@ async function fetchWeekAppts(monday){
     cachedAppts=await parseOrders(all,monday);
     lastWeekKey=wk;
     const total=DAYS.reduce((s,d)=>s+(cachedAppts[d]||[]).length,0);
-    setApiSt(true,`${all.length} via routes, ${total} geplot`);
+    const kmStat2=computeWeekStats(cachedAppts);
+      setApiSt(true,`${all.length} via routes, ${total} geplot`,kmStat2);
     return cachedAppts;
   }catch(e2){
     dbg('get_routes FOUT',e2.message);
@@ -1460,7 +1515,13 @@ async function parseOrders(orders,monday){
 
     // Time windows: inside data{} — handle multiple formats
     // Debug: log timeWindows structure for first few orders
-    const tws=d.timeWindows||d.time_windows||o.timeWindows||o.time_windows||[];
+    // timeWindows: array of objects, or sometimes a flat string like "9 AM – 11 AM"
+    let tws=d.timeWindows||d.time_windows||o.timeWindows||o.time_windows||[];
+    // Handle string timeWindows: "9 AM – 11 AM" → fake tw object
+    if(typeof tws==='string'&&tws.trim()){
+      const h=detectHour(tws.trim());
+      if(!isNaN(h)) tws=[{TWFrom:String(h).padStart(2,'0')+'00'}];
+    }
     if(orders.indexOf(o)<2)dbg('order timeWindows sample',{id:o.id,tws:JSON.stringify(tws),d_keys:Object.keys(d).filter(k=>k.toLowerCase().includes('time')||k.toLowerCase().includes('window')||k.toLowerCase().includes('sched'))});
     const tw=Array.isArray(tws)&&tws.length>0?tws[0]:tws||d.timeWindow||o.timeWindow||null;
     let slot=null;
@@ -1658,73 +1719,16 @@ function slotAvailOnDay(day,date,slotKey,byDay){
 // ══════════════════════════════════════════════
 // ADVICE
 // ══════════════════════════════════════════════
-function computeAdvice(callerRegion,byDay,wdates,prefSlot){
-  return wdates.map(({day,date})=>{
-    const avail=getAvailStaff(day,date);
-    const totalCap=avail.reduce((s,w)=>s+getDayCap(w,day),0);
-    const appts=(byDay&&byDay[day])||[];
-    const used=appts.length;
-    const free=Math.max(0,totalCap-used);
-    let slotFree=0;
-    if(prefSlot&&prefSlot!=='free'){const sa=slotAvailOnDay(day,date,prefSlot,byDay);slotFree=sa.free;}
-    else slotFree=free;
-    const hasSlot=slotFree>0&&avail.length>0;
-    const regionAppts=appts.filter(a=>a.region===callerRegion).length;
-    const regionSlotAppts=appts.filter(a=>a.region===callerRegion&&a.slot===prefSlot).length;
-    const regionStaff=avail.filter(s=>!s.regions||!s.regions.length||s.regions.includes(callerRegion)).length;
-    let score=-9999;
-    if(hasSlot){score=0;score+=regionAppts*28;score+=regionSlotAppts*22;score+=regionStaff*16;const util=used/(totalCap||1);if(util>0.2&&util<0.8)score+=12;score+=Math.min(slotFree,4)*6;score+=avail.length*3;}
-    const windows=avail.slice(0,3).map(s=>`${s.name.split(' ')[0]}: ${s.schedule[day].start}–${s.schedule[day].end}`);
-    return{day,date,avail,totalCap,used,free,slotFree,hasSlot,regionAppts,regionStaff,score,windows,prefSlot};
-  });
-}
 
 // ══════════════════════════════════════════════
 // MAIN ADVISE
 // ══════════════════════════════════════════════
-async function doAdvise(){
-  const pc=parsePC(document.getElementById('pcInput').value);
-  const name=document.getElementById('callerName').value.trim()||'Beller';
-  const addr=addrSelected?addrSelected.display:document.getElementById('addrInput').value.trim()||'';
-  const err=document.getElementById('planErr');err.classList.remove('on');
-  const prefSlot=getSelectedSlot();
-  if(!prefSlot){err.textContent='⚠ Selecteer een tijdslot of gebruik "vrij insturen".';err.classList.add('on');return;}
-  if(!validPC(pc)&&!addrSelected){err.textContent='⚠ Selecteer een adres uit de dropdown of voer een geldige postcode in.';err.classList.add('on');return;}
-  if(!ST.staff.length){err.textContent='⚠ Voeg eerst medewerkers toe (of importeer via OptimoRoute).';err.classList.add('on');return;}
-  saveSettings();
-  document.getElementById('emptyHint').style.display='none';
-  document.getElementById('resultWrap').style.display='none';
-  document.getElementById('loadHint').classList.add('on');
-  document.getElementById('advBtn').disabled=true;
-  const monday=getMonday(selWeekOff());
-  const callerRegion=getRegion(addrSelected?addrSelected.pc:pc,ST.clusterMethod);
-  dbg('doAdvise',{name,pc,region:callerRegion,slot:prefSlot,slotsByGroup:JSON.stringify(slotsByGroup),freeSlotActive});
-  let byDay=await fetchWeekAppts(monday);
-  if(!byDay){byDay={};DAYS.forEach(d=>byDay[d]=[]);err.textContent='ℹ API niet bereikbaar — advies op basis van rooster enkel';err.classList.add('on');}
-  plotApptsOnMap(byDay,monday);
-  if(addrSelected)pinCallerOnMap(addrSelected.lat,addrSelected.lng,name);
-  const advice=computeAdvice(callerRegion,byDay,wkDates(monday),prefSlot);
-  advice.sort((a,b)=>b.score-a.score);
-  dbg('Advies scores',advice.map(a=>({dag:a.day,score:a.score,slotFree:a.slotFree})));
-  document.getElementById('loadHint').classList.remove('on');
-  document.getElementById('advBtn').disabled=false;
-  const slotLabel=prefSlot==='free'?`${document.getElementById('freeFrom').value}–${document.getElementById('freeTo').value} (vrij)`:(SLOTS[prefSlot]?SLOTS[prefSlot].label:prefSlot);
-  renderResult(name,addr,addrSelected?addrSelected.pc:pc,callerRegion,advice,prefSlot,slotLabel,byDay);
-  updateSlotCounts(byDay);
-}
 
 // ══════════════════════════════════════════════
 // ADVICE POPUP
 // ══════════════════════════════════════════════
 let currentAdvice=null,activeOptionIdx=0;
 
-function openAdvice(name,addr,pc,region,advice,prefSlot,slotLabel,byDay){
-  currentAdvice={name,addr,pc,region,advice,prefSlot,slotLabel,byDay};
-  activeOptionIdx=0;
-  buildSheet();
-  document.getElementById('adviceOverlay').classList.add('open');
-  document.body.style.overflow='hidden';
-}
 function closeAdvice(){
   document.getElementById('adviceOverlay').classList.remove('open');
   document.body.style.overflow='';
@@ -1732,72 +1736,7 @@ function closeAdvice(){
 }
 function overlayClick(e){if(e.target===document.getElementById('adviceOverlay'))closeAdvice();}
 
-function buildSheet(){
-  const {name,addr,pc,region,advice,prefSlot,slotLabel,byDay}=currentAdvice;
-  document.getElementById('sheetTitle').textContent=`Advies — ${name}`;
-  document.getElementById('sheetMeta').textContent=`${pc?pc+' · ':''}${region} · ${slotLabel}`;
-  const opts=advice.slice(0,5);
-  const tabs=document.getElementById('optionTabs');
-  tabs.innerHTML=opts.map((item,i)=>{
-    const pct=item.score<0?0:Math.min(96,50+item.regionAppts*14+item.regionStaff*9+(item.slotFree>0?10:0));
-    const ok=item.hasSlot;
-    const dotCol=ok?(pct>=70?'var(--green)':pct>=40?'var(--amber)':'var(--blue)'):'var(--red)';
-    return`<button class="otab ${i===0?'active':''}" onclick="switchOption(${i})" id="otab-${i}">
-      <div class="tab-badge" style="background:${dotCol}"></div>
-      ${i===0?'⭐ ':''} ${DAYNL[item.day]}
-      <span class="tab-score" style="color:${dotCol}">${ok?pct+'%':'vol'}</span>
-    </button>`;
-  }).join('');
-  const panels=document.getElementById('optionPanels');
-  panels.innerHTML=opts.map((item,i)=>buildOptionPanel(item,i,prefSlot,slotLabel,byDay,region)).join('');
-  updateActionBar(opts[0],slotLabel);
-}
 
-function buildOptionPanel(item,i,prefSlot,slotLabel,byDay,region){
-  const pct=item.score<0?0:Math.min(96,50+item.regionAppts*14+item.regionStaff*9+(item.slotFree>0?10:0));
-  const strokeColor=pct>=70?'#167a5b':pct>=40?'#d4920a':'#b03030';
-  const circ=2*Math.PI*30;
-  const dash=circ*(pct/100);
-  const bDateStr=item.date.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});
-  let reasonTxt='',reasonCls='';
-  if(item.score<-100){reasonTxt=`⚠️ Geen beschikbare plekken voor <strong>${slotLabel}</strong> op ${DAYNL[item.day]}.`;reasonCls='bad';}
-  else if(item.regionAppts>0&&item.regionStaff>0&&item.slotFree>0){reasonTxt=`✅ <strong>${item.regionAppts} bestaande afspraken</strong> in regio ${region} + <strong>${item.regionStaff} medewerker${item.regionStaff>1?'s':''}</strong> met regievoorkeur. Tijdslot heeft ${item.slotFree} vrij.`;}
-  else if(item.regionAppts>0&&item.slotFree>0){reasonTxt=`📍 <strong>${item.regionAppts} afspraken</strong> in regio ${region}. Tijdslot <strong>${slotLabel}</strong>: ${item.slotFree} vrij.`;}
-  else if(item.slotFree>0){reasonTxt=`📅 Tijdslot <strong>${slotLabel}</strong> heeft ${item.slotFree} vrij op ${DAYNL[item.day]}.`;}
-  else{reasonTxt=`❌ Tijdslot <strong>${slotLabel}</strong> is vol of geen personeel.`;reasonCls='bad';}
-  const slotCol=prefSlot!=='free'&&SLOTS[prefSlot]?SLOTS[prefSlot].color:'#888';
-  const staffHtml=item.avail.length===0
-    ?`<div style="font-size:.74rem;color:var(--muted)">Geen medewerkers beschikbaar</div>`
-    :item.avail.map(s=>{const sc=s.schedule&&s.schedule[item.day];const hrs=sc?`${sc.start}–${sc.end}`:'';return`<div class="staff-chip"><div class="chip-dot" style="background:${s.color}"></div>${s.name.split(' ')[0]}<span class="chip-hours">${hrs}</span></div>`;}).join('');
-  const dayPips=currentAdvice.advice.slice(0,5).map(a=>{
-    const sa=slotAvailOnDay(a.day,a.date,prefSlot&&prefSlot!=='free'?prefSlot:'',byDay);
-    const isHere=(a.day===item.day);
-    const cls=isHere&&sa.free>0?'here':sa.free>0?'free':'taken';
-    return`<div class="slot-mini-day"><div class="slot-mini-label">${DAYSH[a.day]}</div><div class="slot-mini-pip ${cls}">${sa.free>0?sa.free:'–'}</div></div>`;
-  }).join('');
-  return`<div class="option-panel ${i===0?'active':''}" id="opanel-${i}">
-    <div class="day-hero">
-      <div class="day-hero-left">
-        <div class="day-big" style="color:${item.score<-100?'var(--red)':'var(--ink)'}">${DAYNL[item.day]}</div>
-        <div class="day-date">${bDateStr}</div>
-        <div class="slot-chip"><div class="slot-dot" style="background:${slotCol}"></div>${slotLabel}</div>
-      </div>
-      <div class="day-hero-right">
-        <div class="match-ring">
-          <svg width="72" height="72" viewBox="0 0 72 72"><circle class="ring-bg" cx="36" cy="36" r="30"/>
-            <circle class="ring-fill" cx="36" cy="36" r="30" stroke="${strokeColor}" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${(circ-dash).toFixed(1)}"/></svg>
-          <div class="match-pct" style="color:${strokeColor}">${pct}%</div>
-        </div>
-        <div class="match-lbl">Match</div>
-      </div>
-    </div>
-    <div class="reason-block ${reasonCls}">${reasonTxt}</div>
-    <div style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:.5rem">Beschikbare medewerkers</div>
-    <div class="staff-chips">${staffHtml}</div>
-    <div style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:.5rem">Tijdslot ${slotLabel} — vrije plekken per dag</div>
-    <div class="slot-mini">${dayPips}</div>
-  </div>`;
-}
 
 function switchOption(idx){
   activeOptionIdx=idx;
@@ -1844,10 +1783,6 @@ function goConfirm(){
 function backToAdvice(){
   ['optionTabs','optionPanels','sheetActions'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='';});
   const cp=document.getElementById('confirmPanel');if(cp)cp.classList.remove('active');
-}
-function renderResult(name,addr,pc,region,advice,prefSlot,slotLabel,byDay){
-  const wrap=document.getElementById('resultWrap');if(wrap)wrap.style.display='none';
-  openAdvice(name,addr,pc,region,advice,prefSlot,slotLabel,byDay);
 }
 
 // ══════════════════════════════════════════════
@@ -2117,8 +2052,11 @@ function renderDayStrip(){
 }
 
 function selectDagDay(d){
+  // Clear previous route
+  if(dagMap&&activeDagDay){clearDayRoute(dagMap,'dag-'+activeDagDay);}
+  dayRouteShowing=false;
   activeDagDay=d;
-  renderDayStrip(); // update active
+  renderDayStrip();
   renderDayContent(d);
 }
 
@@ -2308,42 +2246,6 @@ function generateTips(appts,avail,cap,used,pct,slotCounts,sortedRegions,day,date
   return tips;
 }
 
-function initDayMap(appts, date){
-  // Destroy old map if exists
-  if(dagMap){try{dagMap.remove();}catch(e){}dagMap=null;dagMapMarkers=[];}
-  // Create day map container dynamically after render
-  setTimeout(()=>{
-    const sidebar=document.querySelector('.eff-sidebar');
-    if(!sidebar)return;
-    // Add map to first eff-card
-    const existingMap=document.getElementById('dayMap');
-    if(!existingMap){
-      const wrap=document.createElement('div');wrap.className='day-map-wrap';
-      wrap.innerHTML='<div id="dayMap"></div>';
-      const firstCard=sidebar.querySelector('.eff-card');
-      if(firstCard)firstCard.appendChild(wrap);
-    }
-    const mapEl=document.getElementById('dayMap');
-    if(!mapEl)return;
-    dagMap=L.map('dayMap',{center:[52.2,5.3],zoom:7,zoomControl:false,attributionControl:false});
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(dagMap);
-    const coords=[];
-    appts.forEach(a=>{
-      let lat=a.lat,lng=a.lng;
-      if((!lat||!lng)&&a.postalCode&&validPC(a.postalCode)){[lat,lng]=pcToLL(a.postalCode);}
-      if(!lat||!lng)return;
-      const col=slotColor(a.slot);
-      const m=L.circleMarker([lat,lng],{radius:7,fillColor:col,color:'#fff',weight:1.5,fillOpacity:.9}).addTo(dagMap);
-      const sc=a.slot&&SLOTS[a.slot]?SLOTS[a.slot]:{label:'Onbekend'};
-      m.bindPopup(`<div style="font-family:'Epilogue',sans-serif;font-size:12px;line-height:1.5">
-        <strong>${a.name||'Afspraak'}</strong><br>🕐 ${sc.label}<br>📍 ${a.address||a.postalCode||''}
-      </div>`);
-      coords.push([lat,lng]);dagMapMarkers.push(m);
-    });
-    if(coords.length>1){try{dagMap.fitBounds(coords,{padding:[15,15],maxZoom:12});}catch(e){}}
-    else if(coords.length===1)dagMap.setView(coords[0],11);
-  },150);
-}
 
 
 
@@ -2479,6 +2381,522 @@ function updSchedAndMark(sid,day,field,val){
   const s=ST.staff.find(x=>x.id===sid);
   if(s) s._schedCustomized=true;
 }
+
+// ══════════════════════════════════════════════
+// OPTIMIZED SCORING ENGINE v2
+// ══════════════════════════════════════════════
+
+// Haversine distance in km between two [lat,lng] pairs
+function haversine(a, b){
+  const R=6371, toR=x=>x*Math.PI/180;
+  const dLat=toR(b[0]-a[0]), dLon=toR(b[1]-a[1]);
+  const s=Math.sin(dLat/2)**2+Math.cos(toR(a[0]))*Math.cos(toR(b[0]))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+
+// Get lat/lng for an appointment (real coords or postcode fallback)
+function apptLL(a){
+  if(a.lat&&a.lng)return[a.lat,a.lng];
+  if(a.postalCode&&validPC(a.postalCode))return pcToLL(a.postalCode);
+  return null;
+}
+
+// Compute cluster density score: how close are existing appts to caller?
+// Returns 0-100 score where 100 = all appts within 10km
+function clusterScore(callerLL, appts){
+  if(!callerLL||!appts.length)return 0;
+  const dists=appts.map(a=>{
+    const ll=apptLL(a);
+    return ll?haversine(callerLL,ll):999;
+  }).filter(d=>d<999);
+  if(!dists.length)return 0;
+  // Score: avg inverse distance, capped at 50km
+  const avgDist=dists.reduce((s,d)=>s+Math.min(d,80),0)/dists.length;
+  return Math.max(0,Math.round(100*(1-avgDist/80)));
+}
+
+// Compute the optimized advice
+function computeAdvice(callerRegion, byDay, wdates, prefSlot, callerLL){
+  const results = wdates.map(({day, date})=>{
+    const avail    = getAvailStaff(day, date);
+    const totalCap = avail.reduce((s,w)=>s+getDayCap(w,day), 0);
+    const appts    = (byDay&&byDay[day])||[];
+    const used     = appts.length;
+    const free     = Math.max(0, totalCap-used);
+
+    // Slot-specific availability
+    let slotFree=0, slotUsed=0;
+    if(prefSlot&&prefSlot!=='free'){
+      const sa=slotAvailOnDay(day,date,prefSlot,byDay);
+      slotFree=sa.free; slotUsed=sa.taken;
+    } else {
+      slotFree=free;
+    }
+    const hasSlot = slotFree>0 && avail.length>0;
+
+    // ── Scoring factors ──────────────────────
+    let score = -9999;
+    const factors = {};
+
+    if(hasSlot){
+      score = 0;
+
+      // 1. Geographic clustering (0-40 pts)
+      //    How close are existing day-appts to caller?
+      const dayCluster = clusterScore(callerLL, appts);
+      const slotCluster = clusterScore(callerLL, appts.filter(a=>a.slot===prefSlot));
+      factors.cluster = dayCluster;
+      score += Math.round(dayCluster * 0.35);   // 0-35 pts
+      score += Math.round(slotCluster * 0.10);  // 0-10 pts bonus same-slot cluster
+
+      // 2. Same province / region bonus (0-20 pts)
+      const regionAppts = appts.filter(a=>a.region===callerRegion).length;
+      factors.regionAppts = regionAppts;
+      score += Math.min(regionAppts * 5, 20);   // 5 pts per same-region appt, max 20
+
+      // 3. Staff with region preference (0-15 pts)
+      const regionStaff = avail.filter(s=>
+        !s.regions||!s.regions.length||s.regions.includes(callerRegion)
+      ).length;
+      factors.regionStaff = regionStaff;
+      score += Math.min(regionStaff * 5, 15);
+
+      // 4. Sweet-spot utilization (0-12 pts)
+      //    Best between 40-80% capacity — not too empty, not too full
+      const util = used / (totalCap||1);
+      if(util>=0.4&&util<0.8) score += 12;
+      else if(util>=0.2&&util<0.4) score += 6;
+      else if(util>=0.8) score -= 5; // nearly full penalty
+      factors.util = Math.round(util*100);
+
+      // 5. Slot availability quality (0-10 pts)
+      //    More free slots in this time window = better
+      score += Math.min(slotFree*3, 10);
+      factors.slotFree = slotFree;
+
+      // 6. Day-of-week preference (slight boost Mon/Tue/Thu)
+      //    Wed/Fri often fuller so slight penalty
+      if(day==='ma'||day==='di'||day==='do') score += 3;
+
+      // 7. Penalty for same-slot already very full (>75%)
+      if(totalCap>0){
+        const slotUtil=slotUsed/(avail.length||1);
+        if(slotUtil>0.75) score -= 10;
+      }
+
+      factors.score = score;
+    }
+
+    // Best-matched staff for this day+region
+    const bestStaff = [...avail].sort((a,b)=>{
+      const aMatch = a.regions&&a.regions.includes(callerRegion)?1:0;
+      const bMatch = b.regions&&b.regions.includes(callerRegion)?1:0;
+      return bMatch-aMatch;
+    });
+
+    // Human-readable match percentage (0-98%)
+    const matchPct = score<0 ? 0 : Math.min(98,
+      30 +
+      Math.round((factors.cluster||0)*0.30) +
+      Math.min((factors.regionAppts||0)*8,24) +
+      Math.min((factors.regionStaff||0)*6,18) +
+      (slotFree>0?8:0) +
+      (factors.util>=40&&factors.util<80?8:0)
+    );
+
+    // Estimated km savings vs random day (rough)
+    const avgDistKm = callerLL&&appts.length
+      ? Math.round(appts.slice(0,5).map(a=>{const ll=apptLL(a);return ll?haversine(callerLL,ll):50;}).reduce((s,d)=>s+d,0)/Math.min(appts.length,5))
+      : null;
+
+    return {
+      day, date, avail: bestStaff, totalCap, used, free, slotFree, slotUsed, hasSlot,
+      regionAppts: factors.regionAppts||0,
+      regionStaff: factors.regionStaff||0,
+      clusterScore: factors.cluster||0,
+      utilPct: factors.util||0,
+      score, matchPct, prefSlot,
+      avgDistKm,
+    };
+  });
+
+  return results;
+}
+
+// ── Updated doAdvise to pass callerLL ──
+async function doAdvise(){
+  const pc=parsePC(document.getElementById('pcInput').value);
+  const name=document.getElementById('callerName').value.trim()||'Beller';
+  const addr=addrSelected?addrSelected.display:document.getElementById('addrInput').value.trim()||'';
+  const err=document.getElementById('planErr');err.classList.remove('on');
+  const prefSlot=getSelectedSlot();
+  if(!prefSlot){err.textContent='⚠ Selecteer een tijdslot of gebruik "vrij insturen".';err.classList.add('on');return;}
+  if(!validPC(pc)&&!addrSelected){err.textContent='⚠ Selecteer een adres uit de dropdown of voer een geldige postcode in.';err.classList.add('on');return;}
+  if(!ST.staff.length){err.textContent='⚠ Voeg eerst medewerkers toe (of importeer via OptimoRoute).';err.classList.add('on');return;}
+  saveSettings();
+  document.getElementById('emptyHint').style.display='none';
+  document.getElementById('resultWrap').style.display='none';
+  document.getElementById('loadHint').classList.add('on');
+  document.getElementById('advBtn').disabled=true;
+
+  const monday=getMonday(selWeekOff());
+  const callerPC=addrSelected?addrSelected.pc:pc;
+  const callerRegion=getRegion(callerPC,ST.clusterMethod);
+  // Get caller coordinates for distance scoring
+  let callerLL=null;
+  if(addrSelected&&addrSelected.lat&&addrSelected.lng){
+    callerLL=[addrSelected.lat,addrSelected.lng];
+  } else if(callerPC&&validPC(callerPC)){
+    callerLL=pcToLL(callerPC);
+  }
+
+  dbg('doAdvise v2',{name,pc:callerPC,region:callerRegion,slot:prefSlot,callerLL,slotsByGroup:JSON.stringify(slotsByGroup),freeSlotActive});
+
+  let byDay=await fetchWeekAppts(monday);
+  if(!byDay){byDay={};DAYS.forEach(d=>byDay[d]=[]);err.textContent='ℹ API niet bereikbaar — advies op rooster basis';err.classList.add('on');}
+  plotApptsOnMap(byDay,monday);
+  if(callerLL)pinCallerOnMap(callerLL[0],callerLL[1],name);
+
+  const advice=computeAdvice(callerRegion,byDay,wkDates(monday),prefSlot,callerLL);
+  advice.sort((a,b)=>b.score-a.score);
+
+  dbg('Advies scores v2',advice.map(a=>({dag:a.day,score:a.score,match:a.matchPct+'%',cluster:a.clusterScore,slotFree:a.slotFree})));
+
+  document.getElementById('loadHint').classList.remove('on');
+  document.getElementById('advBtn').disabled=false;
+
+  const slotLabel=prefSlot==='free'
+    ?`${document.getElementById('freeFrom').value}–${document.getElementById('freeTo').value} (vrij)`
+    :(SLOTS[prefSlot]?SLOTS[prefSlot].label:prefSlot);
+
+  renderResult(name,addr,callerPC,callerRegion,advice,prefSlot,slotLabel,byDay,callerLL);
+  updateSlotCounts(byDay);
+}
+
+// ── Improved option panel with richer explanation ──
+function buildOptionPanel(item,i,prefSlot,slotLabel,byDay,region,callerLL){
+  const pct=item.matchPct||0;
+  const strokeColor=pct>=70?'#167a5b':pct>=45?'#d4920a':'#b03030';
+  const circ=2*Math.PI*30;
+  const dash=circ*(pct/100);
+  const bDateStr=item.date.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});
+
+  // Build reason text with multiple factors
+  const reasons=[];
+  if(!item.hasSlot){
+    reasons.push({cls:'bad',txt:`⛔ Geen vrije plekken voor <strong>${slotLabel}</strong>.`});
+  } else {
+    if(item.clusterScore>=60) reasons.push({cls:'good',txt:`🎯 Uitstekende clustering — bestaande afspraken liggen dicht bij dit adres (score ${item.clusterScore}/100).`});
+    else if(item.clusterScore>=30) reasons.push({cls:'ok',txt:`📍 Redelijke clustering — er zijn al afspraken in de buurt (score ${item.clusterScore}/100).`});
+    else reasons.push({cls:'neutral',txt:`📭 Weinig afspraken in de buurt. Dit vergroot de rijafstand.`});
+
+    if(item.regionAppts>0) reasons.push({cls:'good',txt:`✅ <strong>${item.regionAppts} afspraken</strong> al in <strong>${region}</strong> op deze dag.`});
+    if(item.regionStaff>0) reasons.push({cls:'good',txt:`👤 <strong>${item.regionStaff} medewerker${item.regionStaff>1?'s':''}</strong> met voorkeur voor ${region}.`});
+    if(item.avgDistKm!==null&&item.avgDistKm!==undefined) reasons.push({cls:'neutral',txt:`🚗 Gemiddelde afstand tot huidige afspraken: <strong>~${item.avgDistKm} km</strong>.`});
+    if(item.utilPct>=40&&item.utilPct<80) reasons.push({cls:'good',txt:`⚡ Dagbezetting op <strong>${item.utilPct}%</strong> — ideale spreiding.`});
+    else if(item.utilPct>=80) reasons.push({cls:'warn',txt:`⚠️ Dag is al voor <strong>${item.utilPct}%</strong> gevuld.`});
+    if(item.slotFree>0) reasons.push({cls:'ok',txt:`🕐 Tijdslot <strong>${slotLabel}</strong>: ${item.slotFree} plek${item.slotFree>1?'ken':''} vrij.`});
+  }
+
+  const clsBg={good:'var(--gbg)',ok:'var(--bbg)',warn:'var(--abg)',bad:'var(--rbg)',neutral:'var(--bg)'};
+  const clsBorder={good:'var(--green)',ok:'var(--blue)',warn:'var(--amber)',bad:'var(--red)',neutral:'var(--border)'};
+  const reasonHtml=reasons.map(r=>`<div style="background:${clsBg[r.cls]};border-left:3px solid ${clsBorder[r.cls]};border-radius:6px;padding:.45rem .7rem;font-size:.74rem;line-height:1.55;margin-bottom:.38rem">${r.txt}</div>`).join('');
+
+  const slotCol=prefSlot!=='free'&&SLOTS[prefSlot]?SLOTS[prefSlot].color:'#888';
+  const staffHtml=item.avail.length===0
+    ?`<div style="font-size:.74rem;color:var(--muted)">Geen medewerkers beschikbaar</div>`
+    :item.avail.slice(0,4).map(s=>{
+      const sc=s.schedule&&s.schedule[item.day];
+      const isMatch=s.regions&&s.regions.includes(region);
+      return`<div class="staff-chip" style="${isMatch?'border-color:var(--green);background:var(--gbg)':''}">
+        <div class="chip-dot" style="background:${s.color}"></div>
+        ${s.name.split(' ')[0]}
+        ${isMatch?'<span style="font-size:.58rem;color:var(--green)">★</span>':''}
+        <span class="chip-hours">${sc?sc.start+'–'+sc.end:''}</span>
+      </div>`;
+    }).join('')+(item.avail.length>4?`<div class="staff-chip" style="color:var(--muted)">+${item.avail.length-4} meer</div>`:'');
+
+  // Mini slot grid
+  const dayPips=(currentAdvice.advice||[]).slice(0,5).map(a=>{
+    const sa=prefSlot&&prefSlot!=='free'?slotAvailOnDay(a.day,a.date,prefSlot,byDay):{free:0,taken:0};
+    const isHere=(a.day===item.day);
+    const cls=isHere&&sa.free>0?'here':sa.free>0?'free':'taken';
+    return`<div class="slot-mini-day">
+      <div class="slot-mini-label">${DAYSH[a.day]}</div>
+      <div class="slot-mini-pip ${cls}">${sa.free>0?sa.free:'–'}</div>
+    </div>`;
+  }).join('');
+
+  return`<div class="option-panel ${i===0?'active':''}" id="opanel-${i}">
+    <div class="day-hero">
+      <div class="day-hero-left">
+        <div class="day-big" style="color:${!item.hasSlot?'var(--red)':'var(--ink)'}">${DAYNL[item.day]}</div>
+        <div class="day-date">${bDateStr}</div>
+        <div class="slot-chip"><div class="slot-dot" style="background:${slotCol}"></div>${slotLabel}</div>
+      </div>
+      <div class="day-hero-right">
+        <div class="match-ring">
+          <svg width="72" height="72" viewBox="0 0 72 72">
+            <circle class="ring-bg" cx="36" cy="36" r="30"/>
+            <circle class="ring-fill" cx="36" cy="36" r="30" stroke="${strokeColor}"
+              stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${(circ-dash).toFixed(1)}"/>
+          </svg>
+          <div class="match-pct" style="color:${strokeColor}">${pct}%</div>
+        </div>
+        <div class="match-lbl">Match</div>
+      </div>
+    </div>
+    <div style="margin-bottom:.75rem">${reasonHtml}</div>
+    <div style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:.5rem">Medewerkers <span style="opacity:.5">(★ = regiomatch)</span></div>
+    <div class="staff-chips">${staffHtml}</div>
+    <div style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:.65rem 0 .4rem">Tijdslot ${slotLabel} — vrije plekken per dag</div>
+    <div class="slot-mini">${dayPips}</div>
+  </div>`;
+}
+
+// ── Rebuild sheet with callerLL ──
+function buildSheet(){
+  const {name,addr,pc,region,advice,prefSlot,slotLabel,byDay,callerLL}=currentAdvice;
+  document.getElementById('sheetTitle').textContent=`Advies — ${name}`;
+  document.getElementById('sheetMeta').textContent=`${pc?pc+' · ':''}${region} · ${slotLabel}`;
+  const bestOpt=advice[0];
+  const clusterEl=document.getElementById('sheetClusterInfo');
+  if(clusterEl&&bestOpt&&bestOpt.clusterScore>0){
+    clusterEl.textContent=`Beste dag: ${DAYNL[bestOpt.day]} · Clustering ${bestOpt.clusterScore}/100 · ~${bestOpt.avgDistKm!=null?bestOpt.avgDistKm+'km gem.':'?'} rijafstand`;
+    clusterEl.style.display='';
+  }
+  const opts=advice.slice(0,5);
+  const tabs=document.getElementById('optionTabs');
+  tabs.innerHTML=opts.map((item,i)=>{
+    const pct=item.matchPct||0;
+    const ok=item.hasSlot;
+    const dotCol=ok?(pct>=70?'var(--green)':pct>=45?'var(--amber)':'var(--blue)'):'var(--red)';
+    return`<button class="otab ${i===0?'active':''}" onclick="switchOption(${i})" id="otab-${i}">
+      <div class="tab-badge" style="background:${dotCol}"></div>
+      ${i===0?'⭐ ':''} ${DAYNL[item.day]}
+      <span class="tab-score" style="color:${dotCol}">${ok?pct+'%':'vol'}</span>
+    </button>`;
+  }).join('');
+  const panels=document.getElementById('optionPanels');
+  panels.innerHTML=opts.map((item,i)=>buildOptionPanel(item,i,prefSlot,slotLabel,byDay,region,callerLL)).join('');
+  updateActionBar(opts[0],slotLabel);
+}
+
+function renderResult(name,addr,pc,region,advice,prefSlot,slotLabel,byDay,callerLL){
+  currentAdvice={name,addr,pc,region,advice,prefSlot,slotLabel,byDay,callerLL};
+  activeOptionIdx=0;
+  buildSheet();
+  document.getElementById('adviceOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+// ── Update openAdvice to accept callerLL ──
+function openAdvice(name,addr,pc,region,advice,prefSlot,slotLabel,byDay,callerLL){
+  currentAdvice={name,addr,pc,region,advice,prefSlot,slotLabel,byDay,callerLL};
+  activeOptionIdx=0;
+  buildSheet();
+  document.getElementById('adviceOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+// ══════════════════════════════════════════════
+// ROUTE DRAWING (OSRM - free, no API key)
+// ══════════════════════════════════════════════
+let routeLayers = {};
+
+async function drawDayRoute(appts, map, dayKey){
+  // Remove existing route for this day
+  if(routeLayers[dayKey]){
+    try{map.removeLayer(routeLayers[dayKey]);}catch(e){}
+    delete routeLayers[dayKey];
+  }
+
+  // Collect coords in slot order
+  const ordered = [...appts]
+    .filter(a => apptLL(a))
+    .sort((a,b)=>{
+      const order={'09-11':0,'10-12':1,'13-15':2,'17-19':3,'20-22':4};
+      return (order[a.slot]??5)-(order[b.slot]??5);
+    });
+
+  if(ordered.length < 2) return;
+  const coords = ordered.map(a => apptLL(a)).filter(Boolean);
+  if(coords.length < 2) return;
+
+  try{
+    // OSRM public API (free, no key needed)
+    const coordStr = coords.map(([lat,lng])=>`${lng},${lat}`).join(';');
+    const url = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`OSRM ${res.status}`);
+    const data = await res.json();
+    if(!data.routes||!data.routes[0]) throw new Error('geen route');
+
+    const geom = data.routes[0].geometry;
+    const totalKm = Math.round(data.routes[0].distance/1000);
+    const totalMin = Math.round(data.routes[0].duration/60);
+
+    const layer = L.geoJSON(geom, {
+      style:{color:'#1e3fd4',weight:2.5,opacity:.55,dashArray:'6,5'}
+    }).addTo(map);
+
+    // Store distance info on layer for tooltip
+    layer.bindTooltip(`🚗 ${totalKm} km · ${totalMin} min rijden`, {sticky:true, className:'route-tip'});
+    routeLayers[dayKey] = layer;
+    dbg(`Route getekend dag ${dayKey}`, {km:totalKm, min:totalMin, stops:coords.length});
+    return {km: totalKm, min: totalMin};
+  }catch(e){
+    dbg('Route fout (OSRM)', e.message);
+    // Fallback: draw straight lines between points
+    const latLngs = coords.map(([lat,lng])=>[lat,lng]);
+    const layer = L.polyline(latLngs,{color:'#1e3fd4',weight:2,opacity:.4,dashArray:'4,4'}).addTo(map);
+    routeLayers[dayKey] = layer;
+  }
+}
+
+function clearDayRoute(map, dayKey){
+  if(routeLayers[dayKey]){
+    try{map.removeLayer(routeLayers[dayKey]);}catch(e){}
+    delete routeLayers[dayKey];
+  }
+}
+
+// Route drawing on MAIN map (per selected day filter)
+let mainMapDayFilter = null;
+let routeToggleActive = false;
+
+function toggleMainMapRoute(){
+  routeToggleActive = !routeToggleActive;
+  const btn = document.getElementById('routeToggleBtn');
+  if(btn) btn.classList.toggle('active', routeToggleActive);
+  if(routeToggleActive){
+    drawMainMapRoutes();
+  } else {
+    DAYS.forEach(d => clearDayRoute(mainMap, 'main-'+d));
+  }
+}
+
+async function drawMainMapRoutes(){
+  if(!cachedAppts) return;
+  const monday = getMonday(selWeekOff());
+  // Draw route for each day separately with different colors
+  const dayColors = {ma:'#1e3fd4',di:'#167a5b',wo:'#b07400',do:'#6b3fa0',vr:'#b03030'};
+  for(const d of DAYS){
+    const appts = cachedAppts[d]||[];
+    if(appts.length < 2) continue;
+    const ordered = [...appts].filter(a=>apptLL(a))
+      .sort((a,b)=>{const o={'09-11':0,'10-12':1,'13-15':2,'17-19':3,'20-22':4};return(o[a.slot]??5)-(o[b.slot]??5);});
+    const coords = ordered.map(a=>apptLL(a)).filter(Boolean);
+    if(coords.length < 2) continue;
+    try{
+      const coordStr = coords.map(([lat,lng])=>`${lng},${lat}`).join(';');
+      const url = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`;
+      const res = await fetch(url);
+      if(!res.ok) continue;
+      const data = await res.json();
+      if(!data.routes?.[0]) continue;
+      const col = dayColors[d]||'#1e3fd4';
+      if(routeLayers['main-'+d]) try{mainMap.removeLayer(routeLayers['main-'+d]);}catch(e){}
+      routeLayers['main-'+d] = L.geoJSON(data.routes[0].geometry,{
+        style:{color:col,weight:2,opacity:.45,dashArray:'5,4'}
+      }).addTo(mainMap);
+      const km = Math.round(data.routes[0].distance/1000);
+      routeLayers['main-'+d].bindTooltip(`${d.toUpperCase()}: 🚗 ${km} km`,{sticky:true,className:'route-tip'});
+    }catch(e){dbg('main route fout '+d, e.message);}
+  }
+}
+
+// ══════════════════════════════════════════════
+// IMPROVED initDayMap — with route drawing
+// ══════════════════════════════════════════════
+function initDayMap(appts, date){
+  if(dagMap){try{dagMap.remove();}catch(e){}dagMap=null;dagMapMarkers=[];}
+  setTimeout(()=>{
+    const sidebar = document.querySelector('.eff-sidebar');
+    if(!sidebar) return;
+
+    // Build map container with route toggle button
+    let wrap = document.getElementById('dayMapWrap');
+    if(!wrap){
+      wrap = document.createElement('div');
+      wrap.id = 'dayMapWrap';
+      wrap.style.cssText = 'margin-top:.8rem;';
+      wrap.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.45rem;">
+          <div style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)">Kaart</div>
+          <button id="dayRouteBtn" onclick="toggleDayRoute()" style="font-size:.65rem;font-weight:700;background:var(--bbg);border:1.5px solid var(--blue);border-radius:7px;color:var(--blue);padding:.22rem .6rem;cursor:pointer;">🗺 Toon route</button>
+        </div>
+        <div class="day-map-wrap"><div id="dayMap"></div></div>
+        <div id="dayRouteInfo" style="font-size:.7rem;color:var(--muted);margin-top:.35rem;min-height:1rem;"></div>
+      `;
+      const firstCard = sidebar.querySelector('.eff-card');
+      if(firstCard) firstCard.appendChild(wrap);
+    }
+
+    const mapEl = document.getElementById('dayMap');
+    if(!mapEl) return;
+
+    dagMap = L.map('dayMap',{center:[52.2,5.3],zoom:7,zoomControl:false,attributionControl:false});
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(dagMap);
+
+    const coords = [];
+    // Sort by slot time for route order
+    const sorted = [...appts].sort((a,b)=>{
+      const o={'09-11':0,'10-12':1,'13-15':2,'17-19':3,'20-22':4};
+      return (o[a.slot]??5)-(o[b.slot]??5);
+    });
+
+    sorted.forEach((a,idx)=>{
+      let lat=a.lat,lng=a.lng;
+      if((!lat||!lng)&&a.postalCode&&validPC(a.postalCode)){[lat,lng]=pcToLL(a.postalCode);}
+      if(!lat||!lng)return;
+      const col = slotColor(a.slot);
+      // Numbered markers for route order
+      const icon = L.divIcon({
+        className:'',
+        html:`<div style="background:${col};color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:10px;font-weight:800;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25)">${idx+1}</div>`,
+        iconSize:[22,22], iconAnchor:[11,11]
+      });
+      const m = L.marker([lat,lng],{icon}).addTo(dagMap);
+      const sc = a.slot&&SLOTS[a.slot]?SLOTS[a.slot]:{label:'Vrij'};
+      m.bindPopup(`<div style="font-family:'Epilogue',sans-serif;font-size:12px;line-height:1.5;min-width:140px">
+        <strong>${a.name||'Afspraak'}</strong><br>
+        🕐 ${sc.label}<br>📍 ${a.address||a.postalCode||''}
+      </div>`);
+      coords.push([lat,lng]);
+      dagMapMarkers.push(m);
+    });
+
+    if(coords.length>1) try{dagMap.fitBounds(coords,{padding:[20,20],maxZoom:13});}catch(e){}
+    else if(coords.length===1) dagMap.setView(coords[0],11);
+  }, 150);
+}
+
+let dayRouteShowing = false;
+async function toggleDayRoute(){
+  const btn = document.getElementById('dayRouteBtn');
+  const info = document.getElementById('dayRouteInfo');
+  if(!dagMap||!activeDagDay){return;}
+
+  dayRouteShowing = !dayRouteShowing;
+  if(btn) btn.textContent = dayRouteShowing ? '✕ Verberg route' : '🗺 Toon route';
+  if(btn) btn.style.background = dayRouteShowing ? 'var(--blue)' : 'var(--bbg)';
+  if(btn) btn.style.color = dayRouteShowing ? '#fff' : 'var(--blue)';
+
+  if(dayRouteShowing){
+    if(info) info.textContent = 'Route berekenen…';
+    const appts = dagByDay[activeDagDay]||[];
+    const result = await drawDayRoute(appts, dagMap, 'dag-'+activeDagDay);
+    if(info){
+      if(result) info.innerHTML = `🚗 <strong>${result.km} km</strong> · <strong>${result.min} min</strong> rijden voor alle afspraken`;
+      else info.textContent = 'Route getekend (geschatte lijn)';
+    }
+  } else {
+    clearDayRoute(dagMap, 'dag-'+activeDagDay);
+    if(info) info.textContent = '';
+  }
+}
+
 
 </script>
 <!-- DEBUG PANEL -->
