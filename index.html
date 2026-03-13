@@ -1972,6 +1972,40 @@ async function testApiCall(){
   }catch(e){dbg('TEST FOUT',e.message);}
 }
 
+
+async function testTimeWindows(){
+  dbg('=== TIJDSLOTEN TEST ===');
+  if(!ST.apiKey){dbg('Geen API key');return;}
+  const monday=getMonday(selWeekOff());
+  const from=monday.toISOString().slice(0,10);
+  const toD=new Date(monday);toD.setDate(toD.getDate()+4);
+  const to=toD.toISOString().slice(0,10);
+  try{
+    const res=await fetch(`https://api.optimoroute.com/v1/search_orders?key=${encodeURIComponent(ST.apiKey)}`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({dateRange:{from,to},includeOrderData:true,includeScheduleInformation:true})
+    });
+    const data=await res.json();
+    const orders=data.orders||[];
+    dbg(`${orders.length} orders opgehaald`);
+    // Show timeWindows for first 10 orders
+    orders.slice(0,10).forEach((o,i)=>{
+      const d=o.data||o;
+      const tw=d.timeWindows||d.time_windows||o.timeWindows||o.time_windows;
+      const name=d.orderNo||o.name||'?';
+      dbg(`Order ${i+1}: ${name}`,{
+        timeWindows: JSON.stringify(tw),
+        timeWindow: JSON.stringify(d.timeWindow||o.timeWindow),
+        scheduledAt: d.scheduledAt||o.scheduledAt||'–',
+        dataKeys: Object.keys(d).join(',')
+      });
+    });
+    // Summary
+    const withTw=orders.filter(o=>{const d=o.data||o;return(d.timeWindows||d.time_windows||o.timeWindows||[]).length>0;});
+    dbg(`Samenvatting: ${withTw.length}/${orders.length} orders hebben tijdvensters`);
+  }catch(e){dbg('Fout',e.message);}
+}
+
 // toggleDebug defined above
 
 
@@ -2273,6 +2307,7 @@ function initDayMap(appts, date){
     <span style="color:#3effc4;font-size:.75rem;font-weight:700">🐛 PlanSlim Debug Console</span>
     <div style="display:flex;gap:.5rem">
       <button onclick="testApiCall()" style="background:#1e3fd4;color:#fff;border:none;border-radius:5px;font-size:.68rem;padding:.28rem .7rem;cursor:pointer;font-family:monospace">Test API</button>
+      <button onclick="testTimeWindows()" style="background:#6b3fa0;color:#fff;border:none;border-radius:5px;font-size:.68rem;padding:.28rem .7rem;cursor:pointer;font-family:monospace">Test Tijdsloten</button>
       <button onclick="debugLog=[];document.querySelector('.debug-log').innerHTML=''" style="background:#333;color:#aaa;border:none;border-radius:5px;font-size:.68rem;padding:.28rem .6rem;cursor:pointer;font-family:monospace">Wis</button>
       <button onclick="toggleDebug()" style="background:#333;color:#aaa;border:none;border-radius:5px;font-size:.68rem;padding:.28rem .6rem;cursor:pointer;font-family:monospace">✕</button>
     </div>
