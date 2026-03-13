@@ -491,7 +491,13 @@ nav{background:var(--ink);height:52px;display:flex;align-items:center;justify-co
         <option value="postal4">Postcode 4-cijf.</option>
       </select>
     </div>
+    <div class="drfield" style="flex:2">
+      <label>Firebase Realtime Database URL</label>
+      <input type="text" id="firebaseUrl" placeholder="https://xxx-default-rtdb.firebaseio.com">
+      <div id="fbStatus" style="font-size:.62rem;margin-top:.22rem;color:rgba(255,255,255,.3)">Niet geconfigureerd</div>
+    </div>
     <button class="drsave" onclick="saveSettings(true)">Opslaan & verbinden</button>
+    <button class="nbtn" onclick="toggleDebug()" style="background:rgba(255,255,0,.08);border-color:rgba(255,255,0,.15);color:rgba(255,255,0,.6)">🐛 Debug</button>
   </div>
 </div>
 
@@ -640,7 +646,15 @@ nav{background:var(--ink);height:52px;display:flex;align-items:center;justify-co
     <div class="vaclist" id="vacList"></div>
   </div>
 
-  <div class="sgrid" id="staffGrid"></div>
+  <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:1.1rem 1.25rem;box-shadow:var(--shadow);margin-bottom:1.15rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+  <div>
+    <div style="font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700;margin-bottom:.22rem">↓ Importeer medewerkers uit OptimoRoute</div>
+    <div style="font-size:.72rem;color:var(--muted)">Haalt automatisch alle chauffeurs/medewerkers op via de API</div>
+  </div>
+  <button id="importDriversBtn" onclick="importDrivers()" style="background:var(--ink);color:#fff;border:none;border-radius:8px;font-family:'Syne',sans-serif;font-weight:700;font-size:.76rem;padding:.52rem 1rem;cursor:pointer;white-space:nowrap;flex-shrink:0">↓ Importeer uit OptimoRoute</button>
+  <div id="importStatus" style="font-size:.74rem;font-weight:600"></div>
+</div>
+<div class="sgrid" id="staffGrid"></div>
 </div>
 </div>
 
@@ -754,7 +768,6 @@ const DAYNL={ma:'Maandag',di:'Dinsdag',wo:'Woensdag',do:'Donderdag',vr:'Vrijdag'
 const DAYSH={ma:'Ma',di:'Di',wo:'Wo',do:'Do',vr:'Vr'};
 const REGIONS=['Noord-Holland','Zuid-Holland','Utrecht','Gelderland','Noord-Brabant','Limburg','Overijssel','Groningen','Friesland','Drenthe','Zeeland','Flevoland'];
 const AVCOLS=['#1e3fd4','#167a5b','#b03030','#b07400','#6b3fa0','#0c7a8a','#be185d','#15803d'];
-
 const SLOTS={
   '09-11':{label:'09:00–11:00',from:'09:00',to:'11:00',color:'#f59e0b',group:'morning'},
   '10-12':{label:'10:00–12:00',from:'10:00',to:'12:00',color:'#f59e0b',group:'morning'},
@@ -768,14 +781,14 @@ const DEFAULT_DAY={active:true,start:'08:00',end:'17:00',breakStart:'12:00',brea
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-let ST={staff:[],vacations:[],apiKey:'',clusterMethod:'postal2',analytics:{regions:{}}};
+let ST={staff:[],vacations:[],apiKey:'',clusterMethod:'postal2',firebaseUrl:'',analytics:{regions:{}}};
 let cachedAppts=null,lastWeekKey=null;
 let mainMap=null,mapMarkers=[],callerMarker=null;
 let slotsByGroup={morning:null,afternoon:null,evening1:null,evening2:null};
 let freeSlotActive=false;
-let addrSelected=null;
-let addrTimer=null;
+let addrSelected=null,addrTimer=null;
 let charts={};
+let debugLog=[];
 
 // ══════════════════════════════════════════════
 // BOOT
@@ -785,18 +798,113 @@ window.addEventListener('DOMContentLoaded',()=>{
   renderWeekPills();
   initMainMap();
   document.getElementById('callerName').focus();
+  // Close addr dropdown on outside click
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('.addr-wrap'))document.getElementById('addrDropdown').classList.remove('open');
+  });
 });
 
 // ══════════════════════════════════════════════
-// PERSIST
+// DEBUG PANEL
 // ══════════════════════════════════════════════
-function saveST(quiet=false){localStorage.setItem('ps4',JSON.stringify(ST));if(!quiet)showBanner();}
+function dbg(msg,data=null){
+  const ts=new Date().toLocaleTimeString('nl-NL');
+  const entry={ts,msg,data};
+  debugLog.push(entry);
+  console.log(`[PlanSlim ${ts}]`,msg,data||'');
+  const panel=document.getElementById('debugPanel');
+  if(panel&&panel.classList.contains('open')){
+    const line=document.createElement('div');
+    line.style.cssText='font-size:.7rem;padding:.18rem 0;border-bottom:1px solid rgba(255,255,255,.06);line-height:1.4;';
+    line.innerHTML=`<span style="opacity:.45">${ts}</span> ${msg}${data?` <span style="opacity:.5;font-size:.65rem">${JSON.stringify(data).slice(0,120)}</span>`:''}`;
+    panel.querySelector('.debug-log').appendChild(line);
+    panel.querySelector('.debug-log').scrollTop=9999;
+  }
+}
+
+function toggleDebug(){
+  const p=document.getElementById('debugPanel');
+  p.classList.toggle('open');
+  if(p.classList.contains('open')){
+    const log=p.querySelector('.debug-log');
+    log.innerHTML='';
+    debugLog.slice(-40).forEach(e=>{
+      const line=document.createElement('div');
+      line.style.cssText='font-size:.7rem;padding:.18rem 0;border-bottom:1px solid rgba(255,255,255,.06);';
+      line.innerHTML=`<span style="opacity:.45">${e.ts}</span> ${e.msg}${e.data?` <span style="opacity:.45">${JSON.stringify(e.data).slice(0,120)}</span>`:''}`;
+      log.appendChild(line);
+    });
+  }
+}
+
+// ══════════════════════════════════════════════
+// PERSIST (local + Firebase sync)
+// ══════════════════════════════════════════════
+function saveST(quiet=false){
+  // Save API key only locally (security)
+  const local={apiKey:ST.apiKey,clusterMethod:ST.clusterMethod,firebaseUrl:ST.firebaseUrl};
+  localStorage.setItem('ps4_local',JSON.stringify(local));
+  // Save shared data to Firebase if configured
+  const shared={staff:ST.staff,vacations:ST.vacations};
+  localStorage.setItem('ps4_shared',JSON.stringify(shared)); // fallback
+  if(ST.firebaseUrl)saveToFirebase(shared);
+  if(!quiet)showBanner();
+}
+
 function loadST(){
-  try{const r=localStorage.getItem('ps4');if(r)Object.assign(ST,JSON.parse(r));}catch(e){}
+  try{
+    const local=JSON.parse(localStorage.getItem('ps4_local')||'{}');
+    const shared=JSON.parse(localStorage.getItem('ps4_shared')||'{}');
+    ST.apiKey=local.apiKey||'';
+    ST.clusterMethod=local.clusterMethod||'postal2';
+    ST.firebaseUrl=local.firebaseUrl||'';
+    if(shared.staff)ST.staff=shared.staff;
+    if(shared.vacations)ST.vacations=shared.vacations;
+    // Also try legacy key
+    const legacy=JSON.parse(localStorage.getItem('ps4')||'{}');
+    if(!ST.staff.length&&legacy.staff)ST.staff=legacy.staff;
+    if(!ST.vacations.length&&legacy.vacations)ST.vacations=legacy.vacations;
+    if(!ST.apiKey&&legacy.apiKey)ST.apiKey=legacy.apiKey;
+  }catch(e){dbg('loadST error',e.message);}
   document.getElementById('apiKey').value=ST.apiKey||'';
   document.getElementById('clusterMethod').value=ST.clusterMethod||'postal2';
+  document.getElementById('firebaseUrl').value=ST.firebaseUrl||'';
   if(ST.apiKey)setApiSt(true,'Gekoppeld');
+  if(ST.firebaseUrl)loadFromFirebase();
 }
+
+// ── Firebase ──
+async function saveToFirebase(data){
+  if(!ST.firebaseUrl)return;
+  const url=ST.firebaseUrl.replace(/\/?$/,'/planslim.json');
+  try{
+    await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    dbg('Firebase: opgeslagen');
+  }catch(e){dbg('Firebase save fout',e.message);}
+}
+
+async function loadFromFirebase(){
+  if(!ST.firebaseUrl)return;
+  const url=ST.firebaseUrl.replace(/\/?$/,'/planslim.json');
+  try{
+    const res=await fetch(url);
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    if(data&&data.staff){
+      ST.staff=data.staff||[];
+      ST.vacations=data.vacations||[];
+      localStorage.setItem('ps4_shared',JSON.stringify({staff:ST.staff,vacations:ST.vacations}));
+      dbg('Firebase: geladen',{medewerkers:ST.staff.length,verlof:ST.vacations.length});
+      document.getElementById('fbStatus').textContent=`✓ Gesynchroniseerd (${ST.staff.length} medewerkers)`;
+      document.getElementById('fbStatus').style.color='var(--green)';
+    }
+  }catch(e){
+    dbg('Firebase load fout',e.message);
+    document.getElementById('fbStatus').textContent=`✗ ${e.message}`;
+    document.getElementById('fbStatus').style.color='var(--red)';
+  }
+}
+
 function showBanner(){const b=document.getElementById('saveBanner');b.classList.add('show');setTimeout(()=>b.classList.remove('show'),2000);}
 
 // ══════════════════════════════════════════════
@@ -815,8 +923,14 @@ function toggleDrawer(){document.getElementById('drawer').classList.toggle('open
 function saveSettings(connect=false){
   ST.apiKey=document.getElementById('apiKey').value.trim();
   ST.clusterMethod=document.getElementById('clusterMethod').value;
-  cachedAppts=null;lastWeekKey=null;saveST(true);
-  if(connect&&ST.apiKey){setApiSt(true,'Verbonden');document.getElementById('drawer').classList.remove('open');loadWeekApptsAndPlotMap();}
+  ST.firebaseUrl=document.getElementById('firebaseUrl').value.trim().replace(/\/$/,'');
+  cachedAppts=null;lastWeekKey=null;
+  saveST(true);
+  if(connect){
+    if(ST.apiKey){setApiSt(true,'Verbonden');if(ST.firebaseUrl)loadFromFirebase();}
+    document.getElementById('drawer').classList.remove('open');
+    if(ST.apiKey)loadWeekApptsAndPlotMap();
+  }
 }
 function setApiSt(ok,txt){
   document.getElementById('apiLed').className='apiledge'+(ok?' on':'');
@@ -845,11 +959,11 @@ function wkDates(mon){return DAYS.map((d,i)=>{const dt=new Date(mon);dt.setDate(
 // POSTCODE / REGION
 // ══════════════════════════════════════════════
 function fmtPC(el){let v=el.value.replace(/\s/g,'').toUpperCase();if(v.length>4)v=v.slice(0,4)+' '+v.slice(4,6);el.value=v;}
-function parsePC(r){return r.replace(/\s/g,'').toUpperCase();}
+function parsePC(r){return(r||'').replace(/\s/g,'').toUpperCase();}
 function validPC(p){return/^\d{4}[A-Z]{2}$/.test(p);}
 function getRegion(pc,m){
   if(!pc)return'Onbekend';
-  const digs=pc.match(/^\d+/)?.[0]||'';
+  const digs=(pc.match(/^\d+/)||[''])[0];
   if(m==='postal2')return digs.slice(0,2)+'00';
   if(m==='postal4')return digs.slice(0,4);
   const n=parseInt(digs.slice(0,4));
@@ -859,6 +973,13 @@ function getRegion(pc,m){
   if(n<7000)return'Gelderland';if(n<8000)return'Overijssel';
   if(n<9000)return'Friesland';if(n<9400)return'Groningen';
   if(n<9700)return'Drenthe';return'Groningen';
+}
+
+// pc → approximate lat/lng for map fallback
+function pcToLL(pc){
+  const n=parseInt((pc||'0').slice(0,4))||5000;
+  const t=Math.max(0,Math.min(1,(n-1000)/8000));
+  return[51.35+t*2.1+Math.sin(t*Math.PI*1.5)*0.3, 3.85+t*3.0+Math.cos(t*Math.PI)*0.5];
 }
 
 // ══════════════════════════════════════════════
@@ -871,15 +992,15 @@ function onAddrInput(val){
   if(val.length<4){dd.classList.remove('open');dd.innerHTML='';return;}
   dd.innerHTML=`<div class="addr-searching"><div class="spin" style="width:13px;height:13px;border-width:2px"></div>Zoeken…</div>`;
   dd.classList.add('open');
-  addrTimer=setTimeout(()=>searchAddr(val),500);
+  addrTimer=setTimeout(()=>searchAddr(val),550);
 }
-
 async function searchAddr(q){
   const dd=document.getElementById('addrDropdown');
   try{
     const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+', Nederland')}&format=json&limit=6&addressdetails=1&countrycodes=nl`;
-    const res=await fetch(url,{headers:{'User-Agent':'PlanSlim/4.0','Accept-Language':'nl'}});
+    const res=await fetch(url,{headers:{'User-Agent':'PlanSlim/4.0 planslim@example.com','Accept-Language':'nl'}});
     const results=await res.json();
+    dbg('Nominatim zoekresultaten',{query:q,hits:results.length});
     if(!results.length){dd.innerHTML=`<div class="addr-searching">Geen resultaten gevonden</div>`;return;}
     dd.innerHTML=results.map((r,i)=>{
       const a=r.address||{};
@@ -888,17 +1009,14 @@ async function searchAddr(q){
       const pc=(a.postcode||'').replace(/\s/g,'').toUpperCase();
       const city=a.city||a.town||a.village||a.municipality||'';
       const main=`${road}${num?' '+num:''}${city?', '+city:''}`;
-      const sub=pc?`${pc.slice(0,4)+' '+pc.slice(4,6)} ${city}`:'';
+      const sub=pc?`${pc.slice(0,4)} ${pc.slice(4,6)} ${city}`:'';
       return`<div class="addr-opt" tabindex="0" onclick="selectAddr(${i})" onkeydown="if(event.key==='Enter')selectAddr(${i})"
-        data-idx="${i}" data-main="${escH(main)}" data-pc="${escH(pc)}" data-lat="${r.lat}" data-lng="${r.lon}">
-        <strong>${escH(main||r.display_name)}</strong>
-        <span>${escH(sub||r.display_name.split(',').slice(-2).join(',').trim())}</span>
-      </div>`;
+        data-idx="${i}" data-main="${escH(main||r.display_name)}" data-pc="${escH(pc)}" data-lat="${r.lat}" data-lng="${r.lon}">
+        <strong>${escH(main||r.display_name)}</strong><span>${escH(sub)}</span></div>`;
     }).join('');
     dd.classList.add('open');
-  }catch(e){dd.innerHTML=`<div class="addr-searching">Zoekfout — controleer verbinding</div>`;}
+  }catch(e){dbg('Nominatim fout',e.message);dd.innerHTML=`<div class="addr-searching">Zoekfout — check verbinding</div>`;}
 }
-
 function selectAddr(idx){
   const dd=document.getElementById('addrDropdown');
   const opt=dd.querySelector(`[data-idx="${idx}"]`);if(!opt)return;
@@ -908,20 +1026,16 @@ function selectAddr(idx){
   document.getElementById('addrInput').value=main;
   dd.classList.remove('open');
   if(pc&&validPC(pc))document.getElementById('pcInput').value=pc.slice(0,4)+' '+pc.slice(4,6);
-  const conf=document.getElementById('addrConfirmed');
   document.getElementById('addrConfirmedText').textContent=`${main}${pc?' · '+pc.slice(0,4)+' '+pc.slice(4,6):''}`;
-  conf.classList.add('show');
+  document.getElementById('addrConfirmed').classList.add('show');
   pinCallerOnMap(lat,lng,main);
 }
-
 function onAddrKey(e){
-  const dd=document.getElementById('addrDropdown');
-  const opts=dd.querySelectorAll('.addr-opt');
+  const dd=document.getElementById('addrDropdown');const opts=dd.querySelectorAll('.addr-opt');
   if(!opts.length)return;
   if(e.key==='ArrowDown'){e.preventDefault();opts[0].focus();}
   if(e.key==='Escape')dd.classList.remove('open');
 }
-
 function resetAddr(){
   addrSelected=null;
   document.getElementById('addrInput').value='';
@@ -929,7 +1043,6 @@ function resetAddr(){
   document.getElementById('addrInput').focus();
   if(callerMarker){mainMap.removeLayer(callerMarker);callerMarker=null;}
 }
-
 function escH(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 // ══════════════════════════════════════════════
@@ -937,27 +1050,21 @@ function escH(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 // ══════════════════════════════════════════════
 function selectSlot(btn,group){
   if(btn.classList.contains('taken'))return;
-  document.querySelectorAll('[data-slot]').forEach(b=>{if(SLOTS[b.dataset.slot]?.group===group)b.classList.remove('sel');});
+  document.querySelectorAll('[data-slot]').forEach(b=>{if(SLOTS[b.dataset.slot]&&SLOTS[b.dataset.slot].group===group)b.classList.remove('sel');});
   if(freeSlotActive)toggleFreeSlot();
   btn.classList.add('sel');
   slotsByGroup[group]=btn.dataset.slot;
 }
-
 function getSelectedSlot(){
   for(const g of['morning','afternoon','evening1','evening2']){if(slotsByGroup[g])return slotsByGroup[g];}
   return freeSlotActive?'free':null;
 }
-
 function toggleFreeSlot(){
   freeSlotActive=!freeSlotActive;
   document.getElementById('freeToggle').classList.toggle('on',freeSlotActive);
   document.getElementById('freeSlotBody').classList.toggle('open',freeSlotActive);
-  if(freeSlotActive){
-    document.querySelectorAll('[data-slot]').forEach(b=>b.classList.remove('sel'));
-    slotsByGroup={morning:null,afternoon:null,evening1:null,evening2:null};
-  }
+  if(freeSlotActive){document.querySelectorAll('[data-slot]').forEach(b=>b.classList.remove('sel'));slotsByGroup={morning:null,afternoon:null,evening1:null,evening2:null};}
 }
-
 function updateSlotCounts(byDay){
   if(!byDay)return;
   const counts={'09-11':0,'10-12':0,'13-15':0,'17-19':0,'20-22':0};
@@ -975,25 +1082,26 @@ function initMainMap(){
   document.getElementById('mapLegend').style.display='flex';
   if(ST.apiKey)loadWeekApptsAndPlotMap();
 }
-
 function clearMapMarkers(){mapMarkers.forEach(m=>{try{mainMap.removeLayer(m);}catch(e){}});mapMarkers=[];}
-
 function pinCallerOnMap(lat,lng,label){
   if(callerMarker)mainMap.removeLayer(callerMarker);
   callerMarker=L.circleMarker([lat,lng],{radius:11,fillColor:'#e74c3c',color:'#fff',weight:2.5,fillOpacity:1,zIndexOffset:1000}).addTo(mainMap);
   callerMarker.bindPopup(`<strong style="font-family:'Syne',sans-serif">📞 Beller</strong><br>${label}`).openPopup();
   mainMap.setView([lat,lng],11);
 }
-
 async function loadWeekApptsAndPlotMap(){
   if(!ST.apiKey)return;
   const monday=getMonday(selWeekOff());
+  dbg('Kaart laden voor week',monday.toISOString().slice(0,10));
   const byDay=await fetchWeekAppts(monday);
-  if(byDay){plotApptsOnMap(byDay,monday);updateSlotCounts(byDay);}
+  if(byDay){
+    plotApptsOnMap(byDay,monday);
+    updateSlotCounts(byDay);
+    const total=DAYS.reduce((s,d)=>s+(byDay[d]||[]).length,0);
+    dbg(`Kaart: ${total} afspraken geplot`);
+  }
 }
-
 function slotColor(slot){return{'09-11':'#f59e0b','10-12':'#f59e0b','13-15':'#1e3fd4','17-19':'#6b3fa0','20-22':'#167a5b'}[slot]||'#888888';}
-
 function plotApptsOnMap(byDay,monday){
   clearMapMarkers();
   const allCoords=[];
@@ -1002,94 +1110,233 @@ function plotApptsOnMap(byDay,monday){
     const date=new Date(monday);date.setDate(date.getDate()+i);
     const ds=date.toLocaleDateString('nl-NL',{weekday:'short',day:'numeric',month:'short'});
     appts.forEach(appt=>{
-      if(!appt.lat||!appt.lng)return;
+      let lat=appt.lat,lng=appt.lng;
+      // Fallback: use postcode-based approximate position
+      if((!lat||!lng)&&appt.postalCode){[lat,lng]=pcToLL(appt.postalCode);}
+      if(!lat||!lng)return;
       const col=slotColor(appt.slot);
-      const m=L.circleMarker([appt.lat,appt.lng],{radius:7,fillColor:col,color:'#fff',weight:1.5,fillOpacity:.9}).addTo(mainMap);
+      const m=L.circleMarker([lat,lng],{radius:7,fillColor:col,color:'#fff',weight:1.5,fillOpacity:.9}).addTo(mainMap);
       const slotLbl=appt.slot&&SLOTS[appt.slot]?SLOTS[appt.slot].label:'–';
       m.bindPopup(`<div style="font-family:'Epilogue',sans-serif;font-size:12px;min-width:145px;line-height:1.55">
         <strong style="font-family:'Syne',sans-serif">${appt.name||'Afspraak'}</strong><br>
         📅 ${ds}<br>🕐 ${slotLbl}<br>📍 ${appt.address||appt.postalCode||''}
+        ${appt.geocoded?'<br><span style="font-size:.65rem;color:#888">📌 Geschatte locatie</span>':''}
       </div>`);
       mapMarkers.push(m);
-      allCoords.push([appt.lat,appt.lng]);
+      allCoords.push([lat,lng]);
     });
   });
-  if(allCoords.length>1&&!callerMarker)mainMap.fitBounds(allCoords,{padding:[28,28]});
-}
-
-// ══════════════════════════════════════════════
-// API
-// ══════════════════════════════════════════════
-async function fetchWeekAppts(monday){
-  if(!ST.apiKey)return null;
-  const wk=monday.toISOString().slice(0,10);
-  if(lastWeekKey===wk&&cachedAppts)return cachedAppts;
-  const from=wk;const toD=new Date(monday);toD.setDate(toD.getDate()+4);const to=toD.toISOString().slice(0,10);
-  try{
-    const res=await fetch(`https://api.optimoroute.com/v1/search_orders?key=${encodeURIComponent(ST.apiKey)}`,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({dateRange:{from,to},includeOrderData:true,includeScheduleInformation:true})
-    });
-    if(!res.ok)throw new Error(res.status);
-    const data=await res.json();
-    cachedAppts=await parseOrders(data.orders||[],monday);
-    lastWeekKey=wk;setApiSt(true,`${(data.orders||[]).length} afspraken`);return cachedAppts;
-  }catch(e){
-    try{
-      const all=[];
-      for(let i=0;i<5;i++){
-        const d=new Date(monday);d.setDate(d.getDate()+i);const ds=d.toISOString().slice(0,10);
-        const r=await fetch(`https://api.optimoroute.com/v1/get_routes?key=${encodeURIComponent(ST.apiKey)}&date=${ds}&include_orders=true`);
-        if(!r.ok)continue;const rd=await r.json();
-        (rd.routes||[]).forEach(rt=>(rt.stops||[]).forEach(s=>{if(s.order){s.order._date=ds;all.push(s.order);}}));
-      }
-      cachedAppts=await parseOrders(all,monday);lastWeekKey=wk;setApiSt(true,`${all.length} afspraken`);return cachedAppts;
-    }catch(e2){setApiSt(false,'API fout');return null;}
+  if(allCoords.length>1&&!callerMarker){
+    try{mainMap.fitBounds(allCoords,{padding:[30,30],maxZoom:11});}catch(e){}
   }
 }
 
+// ══════════════════════════════════════════════
+// OPTIMOROUTE API — with full debug logging
+// ══════════════════════════════════════════════
+async function fetchWeekAppts(monday){
+  if(!ST.apiKey){dbg('fetchWeekAppts: geen API key');return null;}
+  const wk=monday.toISOString().slice(0,10);
+  if(lastWeekKey===wk&&cachedAppts){dbg('fetchWeekAppts: cache hit');return cachedAppts;}
+
+  const from=wk;
+  const toD=new Date(monday);toD.setDate(toD.getDate()+4);
+  const to=toD.toISOString().slice(0,10);
+  dbg('fetchWeekAppts: ophalen',{from,to});
+
+  // Try search_orders first
+  try{
+    const body={dateRange:{from,to},includeOrderData:true,includeScheduleInformation:true};
+    dbg('search_orders request',body);
+    const res=await fetch(`https://api.optimoroute.com/v1/search_orders?key=${encodeURIComponent(ST.apiKey)}`,{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
+    });
+    const raw=await res.text();
+    dbg('search_orders raw response',raw.slice(0,300));
+    if(!res.ok)throw new Error(`HTTP ${res.status}: ${raw.slice(0,100)}`);
+    const data=JSON.parse(raw);
+    dbg('search_orders parsed',{success:data.success,orderCount:(data.orders||[]).length,keys:Object.keys(data)});
+    if(!data.success&&data.orders===undefined)throw new Error(data.message||'Geen success=true');
+    const orders=data.orders||[];
+    if(orders.length>0)dbg('Eerste order voorbeeld',JSON.stringify(orders[0]).slice(0,400));
+    cachedAppts=await parseOrders(orders,monday);
+    lastWeekKey=wk;
+    const total=DAYS.reduce((s,d)=>s+(cachedAppts[d]||[]).length,0);
+    setApiSt(true,`${orders.length} orders, ${total} geplot`);
+    return cachedAppts;
+  }catch(e){
+    dbg('search_orders FOUT — probeer get_routes fallback',e.message);
+  }
+
+  // Fallback: get_routes
+  try{
+    const all=[];
+    for(let i=0;i<5;i++){
+      const d=new Date(monday);d.setDate(d.getDate()+i);
+      const ds=d.toISOString().slice(0,10);
+      dbg(`get_routes dag ${i}`,ds);
+      const r=await fetch(`https://api.optimoroute.com/v1/get_routes?key=${encodeURIComponent(ST.apiKey)}&date=${ds}&include_orders=true`);
+      const raw=await r.text();
+      dbg(`get_routes ${ds} response`,raw.slice(0,200));
+      if(!r.ok){dbg(`get_routes ${ds} HTTP fout`,r.status);continue;}
+      const rd=JSON.parse(raw);
+      (rd.routes||[]).forEach(rt=>(rt.stops||[]).forEach(s=>{if(s.order){s.order._date=ds;all.push(s.order);}}));
+    }
+    dbg('get_routes totaal',all.length);
+    if(all.length>0)dbg('get_routes eerste order',JSON.stringify(all[0]).slice(0,400));
+    cachedAppts=await parseOrders(all,monday);
+    lastWeekKey=wk;
+    const total=DAYS.reduce((s,d)=>s+(cachedAppts[d]||[]).length,0);
+    setApiSt(true,`${all.length} via routes, ${total} geplot`);
+    return cachedAppts;
+  }catch(e2){
+    dbg('get_routes FOUT',e2.message);
+    setApiSt(false,`Fout: ${e2.message.slice(0,30)}`);
+    return null;
+  }
+}
+
+// ── Parse orders: detect coordinates from every possible field ──
 async function parseOrders(orders,monday){
   const byDay={};DAYS.forEach(d=>byDay[d]=[]);
   const toGeocode=[];
+
   for(const o of orders){
-    const loc=o.location||o.address||{};
-    const pc=(loc.postalCode||loc.postal_code||o.postalCode||'').replace(/\s/g,'').toUpperCase();
-    const ds=o._date||o.date||o.scheduledAt?.slice(0,10)||'';
+    // Try every possible location structure OR has been returned
+    const loc=o.location||o.locationData||{};
+    const addrObj=o.address||{};
+
+    // Postcode — try many field paths
+    const pc=((loc.postalCode||loc.postal_code||loc.zip||
+               addrObj.postalCode||addrObj.postal_code||
+               o.postalCode||o.postal_code||o.zip||'')+'').replace(/\s/g,'').toUpperCase();
+
+    // Date
+    const ds=(o._date||o.date||o.scheduledAt||o.scheduled_at||'').slice(0,10);
     if(!ds)continue;
     const idx=Math.round((new Date(ds)-monday)/86400000);
     if(idx<0||idx>4)continue;
-    const tw=o.timeWindows?.[0]||o.timeWindow||null;
+
+    // Time slot detection from timeWindows
+    const tw=(o.timeWindows||o.time_windows||[])[0]||o.timeWindow||o.time_window||null;
     let slot=null;
-    if(tw){const f=String(tw.timeFrom||tw.from||'').padStart(4,'0');const h=parseInt(f.slice(0,2));
-      if(h===9)slot='09-11';else if(h===10)slot='10-12';else if(h===13)slot='13-15';else if(h===17)slot='17-19';else if(h===20)slot='20-22';}
-    let lat=parseFloat(loc.lat||loc.latitude||0)||null;
-    let lng=parseFloat(loc.lng||loc.longitude||0)||null;
-    const addrStr=[loc.address,loc.city].filter(Boolean).join(', ')||pc;
-    const name=o.name||o.customField1||o.notes?.slice(0,30)||'Afspraak';
-    const obj={name,postalCode:pc,address:addrStr,region:getRegion(pc,ST.clusterMethod),slot,lat,lng};
+    if(tw){
+      const rawFrom=String(tw.timeFrom||tw.time_from||tw.from||tw.start||'').replace(':','').padStart(4,'0');
+      const h=parseInt(rawFrom.slice(0,2));
+      if(h===9)slot='09-11';
+      else if(h===10)slot='10-12';
+      else if(h===13)slot='13-15';
+      else if(h===17)slot='17-19';
+      else if(h===20)slot='20-22';
+    }
+
+    // Coordinates — try every path
+    let lat=parseFloat(loc.lat||loc.latitude||loc.Lat||addrObj.lat||addrObj.latitude||o.lat||o.latitude||0)||null;
+    let lng=parseFloat(loc.lng||loc.lon||loc.longitude||loc.Lng||addrObj.lng||addrObj.lon||addrObj.longitude||o.lng||o.lon||o.longitude||0)||null;
+    let geocoded=false;
+
+    // Build best address string for geocoding
+    const addrParts=[
+      loc.address||loc.street||addrObj.address||addrObj.street||o.street||'',
+      loc.city||addrObj.city||o.city||'',
+    ].filter(Boolean);
+    const addrStr=addrParts.join(', ')||pc;
+
+    const name=o.name||o.orderNo||o.order_no||o.customField1||o.custom_field_1||o.notes?.slice(0,30)||'Afspraak';
+
+    const obj={name,postalCode:pc,address:addrStr,region:getRegion(pc,ST.clusterMethod),slot,lat,lng,geocoded};
     byDay[DAYS[idx]].push(obj);
-    if((!lat||!lng)&&addrStr&&toGeocode.length<8)toGeocode.push({obj,addrStr});
+
+    if((!lat||!lng)&&(addrStr||pc)&&toGeocode.length<25){
+      toGeocode.push({obj,query:addrStr||pc});
+    }
   }
-  for(const {obj,addrStr} of toGeocode){
-    try{
-      const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addrStr+', Nederland')}&format=json&limit=1`;
-      const r=await fetch(url,{headers:{'User-Agent':'PlanSlim/4.0'}});
-      const d=await r.json();
-      if(d[0]){obj.lat=parseFloat(d[0].lat);obj.lng=parseFloat(d[0].lon);}
-    }catch(e){}
-    await new Promise(r=>setTimeout(r,350));
+
+  dbg(`parseOrders: ${orders.length} orders → ${toGeocode.length} te geocoderen`);
+
+  // Geocode in batches with proper rate limiting (Nominatim: max 1/sec)
+  for(const {obj,query} of toGeocode){
+    // First try postcode-based fallback (instant, no API needed)
+    if(obj.postalCode&&validPC(obj.postalCode)){
+      const [flat,flng]=pcToLL(obj.postalCode);
+      obj.lat=flat;obj.lng=flng;obj.geocoded=true; // mark as approximate
+    }
+    // Then try real geocoding in background (don't await for map speed)
+    geocodeInBackground(obj,query);
   }
+
   return byDay;
+}
+
+// Background geocoding — updates markers after the fact
+const geocodeCache={};
+async function geocodeInBackground(obj,query){
+  if(geocodeCache[query]){const c=geocodeCache[query];obj.lat=c[0];obj.lng=c[1];obj.geocoded=false;return;}
+  try{
+    await new Promise(r=>setTimeout(r,200+Math.random()*300)); // stagger requests
+    const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query+', Nederland')}&format=json&limit=1&countrycodes=nl`;
+    const r=await fetch(url,{headers:{'User-Agent':'PlanSlim/4.0 planslim@example.com'}});
+    if(!r.ok)return;
+    const d=await r.json();
+    if(d&&d[0]){
+      const lat=parseFloat(d[0].lat),lng=parseFloat(d[0].lon);
+      geocodeCache[query]=[lat,lng];
+      obj.lat=lat;obj.lng=lng;obj.geocoded=false;
+      dbg('Geocoded',{query,lat,lng});
+    }
+  }catch(e){dbg('Geocode fout',{query,e:e.message});}
+}
+
+// ══════════════════════════════════════════════
+// IMPORT DRIVERS FROM OPTIMOROUTE
+// ══════════════════════════════════════════════
+async function importDrivers(){
+  const btn=document.getElementById('importDriversBtn');
+  const status=document.getElementById('importStatus');
+  if(!ST.apiKey){status.textContent='⚠ Geen API key ingesteld';status.style.color='var(--red)';return;}
+  btn.disabled=true;btn.textContent='Ophalen…';status.textContent='';
+  dbg('Drivers importeren...');
+  try{
+    // Try get_drivers endpoint
+    const res=await fetch(`https://api.optimoroute.com/v1/get_drivers?key=${encodeURIComponent(ST.apiKey)}`);
+    const raw=await res.text();
+    dbg('get_drivers response',raw.slice(0,500));
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    const data=JSON.parse(raw);
+    const drivers=data.drivers||data.result||[];
+    dbg('Drivers gevonden',drivers.length);
+    if(!drivers.length)throw new Error('Geen chauffeurs gevonden in OptimoRoute');
+    let added=0;
+    drivers.forEach(d=>{
+      const name=d.name||d.driverName||d.driver_name||d.email||'Onbekend';
+      // Don't duplicate
+      if(ST.staff.some(s=>s.name===name))return;
+      const id='s'+Date.now()+Math.random();
+      const color=AVCOLS[ST.staff.length%AVCOLS.length];
+      const schedule={};DAYS.forEach(day=>schedule[day]={...DEFAULT_DAY});
+      ST.staff.push({id,name,role:'Monteur',color,schedule,regions:[]});
+      added++;
+    });
+    saveST();
+    status.textContent=`✓ ${added} medewerkers geïmporteerd (${ST.staff.length} totaal)`;
+    status.style.color='var(--green)';
+    renderStaffPage();
+  }catch(e){
+    dbg('import drivers fout',e.message);
+    status.textContent=`✗ ${e.message}`;
+    status.style.color='var(--red)';
+  }
+  btn.disabled=false;btn.textContent='↓ Importeer uit OptimoRoute';
 }
 
 // ══════════════════════════════════════════════
 // AVAILABILITY
 // ══════════════════════════════════════════════
 function isOnVac(sid,date){const ds=date.toISOString().slice(0,10);return ST.vacations.some(v=>v.staffId===sid&&ds>=v.from&&ds<=v.to);}
-function getAvailStaff(day,date){return ST.staff.filter(s=>{const sc=s.schedule?.[day];if(!sc||!sc.active)return false;return!isOnVac(s.id,date);});}
+function getAvailStaff(day,date){return ST.staff.filter(s=>{const sc=s.schedule&&s.schedule[day];if(!sc||!sc.active)return false;return!isOnVac(s.id,date);});}
 function getDayCap(s,day){
-  const sc=s.schedule?.[day];if(!sc||!sc.active)return 0;
-  const toM=t=>{const[h,m]=t.split(':').map(Number);return h*60+m;};
+  const sc=s.schedule&&s.schedule[day];if(!sc||!sc.active)return 0;
+  const toM=t=>{const[h,m]=(t||'00:00').split(':').map(Number);return h*60+m;};
   return Math.min(Math.floor(Math.max(0,toM(sc.end)-toM(sc.start)-toM(sc.breakEnd)+toM(sc.breakStart))/APPT_DUR_MIN),sc.maxAppts||4);
 }
 function slotAvailOnDay(day,date,slotKey,byDay){
@@ -1115,7 +1362,7 @@ function computeAdvice(callerRegion,byDay,wdates,prefSlot){
     const hasSlot=slotFree>0&&avail.length>0;
     const regionAppts=appts.filter(a=>a.region===callerRegion).length;
     const regionSlotAppts=appts.filter(a=>a.region===callerRegion&&a.slot===prefSlot).length;
-    const regionStaff=avail.filter(s=>!s.regions?.length||s.regions.includes(callerRegion)).length;
+    const regionStaff=avail.filter(s=>!s.regions||!s.regions.length||s.regions.includes(callerRegion)).length;
     let score=-9999;
     if(hasSlot){score=0;score+=regionAppts*28;score+=regionSlotAppts*22;score+=regionStaff*16;const util=used/(totalCap||1);if(util>0.2&&util<0.8)score+=12;score+=Math.min(slotFree,4)*6;score+=avail.length*3;}
     const windows=avail.slice(0,3).map(s=>`${s.name.split(' ')[0]}: ${s.schedule[day].start}–${s.schedule[day].end}`);
@@ -1129,39 +1376,38 @@ function computeAdvice(callerRegion,byDay,wdates,prefSlot){
 async function doAdvise(){
   const pc=parsePC(document.getElementById('pcInput').value);
   const name=document.getElementById('callerName').value.trim()||'Beller';
-  const addr=addrSelected?.display||document.getElementById('addrInput').value.trim()||'';
+  const addr=addrSelected?addrSelected.display:document.getElementById('addrInput').value.trim()||'';
   const err=document.getElementById('planErr');err.classList.remove('on');
   const prefSlot=getSelectedSlot();
   if(!prefSlot){err.textContent='⚠ Selecteer een tijdslot of gebruik "vrij insturen".';err.classList.add('on');return;}
-  if(!validPC(pc)&&!addrSelected){err.textContent='⚠ Selecteer een adres uit de dropdown, of vul een geldige postcode in.';err.classList.add('on');return;}
-  if(!ST.staff.length){err.textContent='⚠ Voeg eerst medewerkers toe via "Medewerkers".';err.classList.add('on');return;}
+  if(!validPC(pc)&&!addrSelected){err.textContent='⚠ Selecteer een adres uit de dropdown of voer een geldige postcode in.';err.classList.add('on');return;}
+  if(!ST.staff.length){err.textContent='⚠ Voeg eerst medewerkers toe (of importeer via OptimoRoute).';err.classList.add('on');return;}
   saveSettings();
   document.getElementById('emptyHint').style.display='none';
   document.getElementById('resultWrap').style.display='none';
   document.getElementById('loadHint').classList.add('on');
   document.getElementById('advBtn').disabled=true;
   const monday=getMonday(selWeekOff());
-  const callerRegion=getRegion(addrSelected?.pc||pc,ST.clusterMethod);
+  const callerRegion=getRegion(addrSelected?addrSelected.pc:pc,ST.clusterMethod);
+  dbg('doAdvise',{name,pc,region:callerRegion,slot:prefSlot});
   let byDay=await fetchWeekAppts(monday);
-  if(!byDay){byDay={};DAYS.forEach(d=>byDay[d]=[]);err.textContent='ℹ API niet bereikbaar — advies op basis van rooster';err.classList.add('on');}
+  if(!byDay){byDay={};DAYS.forEach(d=>byDay[d]=[]);err.textContent='ℹ API niet bereikbaar — advies op basis van rooster enkel';err.classList.add('on');}
   plotApptsOnMap(byDay,monday);
   if(addrSelected)pinCallerOnMap(addrSelected.lat,addrSelected.lng,name);
   const advice=computeAdvice(callerRegion,byDay,wkDates(monday),prefSlot);
   advice.sort((a,b)=>b.score-a.score);
+  dbg('Advies scores',advice.map(a=>({dag:a.day,score:a.score,slotFree:a.slotFree})));
   document.getElementById('loadHint').classList.remove('on');
   document.getElementById('advBtn').disabled=false;
-  const slotLabel=prefSlot==='free'?`${document.getElementById('freeFrom').value}–${document.getElementById('freeTo').value} (vrij)`:(SLOTS[prefSlot]?.label||prefSlot);
-  renderResult(name,addr,addrSelected?.pc||pc,callerRegion,advice,prefSlot,slotLabel,byDay);
+  const slotLabel=prefSlot==='free'?`${document.getElementById('freeFrom').value}–${document.getElementById('freeTo').value} (vrij)`:(SLOTS[prefSlot]?SLOTS[prefSlot].label:prefSlot);
+  renderResult(name,addr,addrSelected?addrSelected.pc:pc,callerRegion,advice,prefSlot,slotLabel,byDay);
   updateSlotCounts(byDay);
 }
 
 // ══════════════════════════════════════════════
-// RENDER RESULT
-// ══════════════════════════════════════════════
-// ══════════════════════════════════════════════
 // ADVICE POPUP
 // ══════════════════════════════════════════════
-let currentAdvice=null, currentAdviceCtx=null, activeOptionIdx=0;
+let currentAdvice=null,activeOptionIdx=0;
 
 function openAdvice(name,addr,pc,region,advice,prefSlot,slotLabel,byDay){
   currentAdvice={name,addr,pc,region,advice,prefSlot,slotLabel,byDay};
@@ -1170,131 +1416,76 @@ function openAdvice(name,addr,pc,region,advice,prefSlot,slotLabel,byDay){
   document.getElementById('adviceOverlay').classList.add('open');
   document.body.style.overflow='hidden';
 }
-
 function closeAdvice(){
   document.getElementById('adviceOverlay').classList.remove('open');
   document.body.style.overflow='';
   backToAdvice();
 }
-
 function overlayClick(e){if(e.target===document.getElementById('adviceOverlay'))closeAdvice();}
 
 function buildSheet(){
   const {name,addr,pc,region,advice,prefSlot,slotLabel,byDay}=currentAdvice;
-  document.getElementById('sheetTitle').textContent=`Advies voor ${name}`;
-  document.getElementById('sheetMeta').textContent=`${pc||''} · ${region} · ${slotLabel}`;
-
-  // Build tabs (max 5 options, only hasSlot or best no-slot)
-  const opts=advice.filter((a,i)=>i<5);
+  document.getElementById('sheetTitle').textContent=`Advies — ${name}`;
+  document.getElementById('sheetMeta').textContent=`${pc?pc+' · ':''}${region} · ${slotLabel}`;
+  const opts=advice.slice(0,5);
   const tabs=document.getElementById('optionTabs');
   tabs.innerHTML=opts.map((item,i)=>{
-    const isOk=item.hasSlot;
     const pct=item.score<0?0:Math.min(96,50+item.regionAppts*14+item.regionStaff*9+(item.slotFree>0?10:0));
-    const dotCol=isOk?(pct>=70?'var(--green)':pct>=40?'var(--amber)':'var(--blue)'):'var(--red)';
-    const label=i===0?`⭐ ${DAYNL[item.day]}`:`${DAYSH[item.day]}`;
+    const ok=item.hasSlot;
+    const dotCol=ok?(pct>=70?'var(--green)':pct>=40?'var(--amber)':'var(--blue)'):'var(--red)';
     return`<button class="otab ${i===0?'active':''}" onclick="switchOption(${i})" id="otab-${i}">
       <div class="tab-badge" style="background:${dotCol}"></div>
-      ${label}
-      <span class="tab-score" style="color:${dotCol}">${isOk?pct+'%':'vol'}</span>
+      ${i===0?'⭐ ':''} ${DAYNL[item.day]}
+      <span class="tab-score" style="color:${dotCol}">${ok?pct+'%':'vol'}</span>
     </button>`;
   }).join('');
-
-  // Build panels
   const panels=document.getElementById('optionPanels');
   panels.innerHTML=opts.map((item,i)=>buildOptionPanel(item,i,prefSlot,slotLabel,byDay,region)).join('');
-
-  // Action bar
   updateActionBar(opts[0],slotLabel);
 }
 
 function buildOptionPanel(item,i,prefSlot,slotLabel,byDay,region){
   const pct=item.score<0?0:Math.min(96,50+item.regionAppts*14+item.regionStaff*9+(item.slotFree>0?10:0));
-  const col=pct>=70?'var(--green)':pct>=40?'var(--amber)':'var(--red)';
-  const circumference=2*Math.PI*30;
-  const dash=circumference*(pct/100);
   const strokeColor=pct>=70?'#167a5b':pct>=40?'#d4920a':'#b03030';
+  const circ=2*Math.PI*30;
+  const dash=circ*(pct/100);
   const bDateStr=item.date.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});
-
-  // Reason
   let reasonTxt='',reasonCls='';
-  if(item.score<-100){reasonTxt=`⚠️ Geen beschikbare plekken voor tijdslot <strong>${slotLabel}</strong> op ${DAYNL[item.day]}.`;reasonCls='bad';}
-  else if(item.regionAppts>0&&item.regionStaff>0&&item.slotFree>0){reasonTxt=`✅ <strong>${item.regionAppts} bestaande afspraken</strong> in regio ${region} + <strong>${item.regionStaff} medewerker${item.regionStaff>1?'s':''}</strong> met regievoorkeur. Tijdslot heeft ${item.slotFree} vrije plek${item.slotFree===1?'':'ken'}.`;}
-  else if(item.regionAppts>0&&item.slotFree>0){reasonTxt=`📍 <strong>${item.regionAppts} afspraken</strong> in regio ${region} op ${DAYNL[item.day]}. Tijdslot <strong>${slotLabel}</strong>: ${item.slotFree} vrij.`;}
-  else if(item.slotFree>0){reasonTxt=`📅 Tijdslot <strong>${slotLabel}</strong> heeft ${item.slotFree} vrij${item.regionAppts===0?' (geen andere afspraken in jouw regio vandaag)':''}.`;}
-  else{reasonTxt=`❌ Tijdslot <strong>${slotLabel}</strong> is vol of geen personeel beschikbaar.`;reasonCls='bad';}
-
-  // Slot color
+  if(item.score<-100){reasonTxt=`⚠️ Geen beschikbare plekken voor <strong>${slotLabel}</strong> op ${DAYNL[item.day]}.`;reasonCls='bad';}
+  else if(item.regionAppts>0&&item.regionStaff>0&&item.slotFree>0){reasonTxt=`✅ <strong>${item.regionAppts} bestaande afspraken</strong> in regio ${region} + <strong>${item.regionStaff} medewerker${item.regionStaff>1?'s':''}</strong> met regievoorkeur. Tijdslot heeft ${item.slotFree} vrij.`;}
+  else if(item.regionAppts>0&&item.slotFree>0){reasonTxt=`📍 <strong>${item.regionAppts} afspraken</strong> in regio ${region}. Tijdslot <strong>${slotLabel}</strong>: ${item.slotFree} vrij.`;}
+  else if(item.slotFree>0){reasonTxt=`📅 Tijdslot <strong>${slotLabel}</strong> heeft ${item.slotFree} vrij op ${DAYNL[item.day]}.`;}
+  else{reasonTxt=`❌ Tijdslot <strong>${slotLabel}</strong> is vol of geen personeel.`;reasonCls='bad';}
   const slotCol=prefSlot!=='free'&&SLOTS[prefSlot]?SLOTS[prefSlot].color:'#888';
-
-  // Staff chips
   const staffHtml=item.avail.length===0
     ?`<div style="font-size:.74rem;color:var(--muted)">Geen medewerkers beschikbaar</div>`
-    :item.avail.map(s=>{
-      const sc=s.schedule?.[item.day];
-      const hrs=sc?`${sc.start}–${sc.end}`:'';
-      return`<div class="staff-chip"><div class="chip-dot" style="background:${s.color}"></div>${s.name.split(' ')[0]}<span class="chip-hours">${hrs}</span></div>`;
-    }).join('');
-
-  // Slot × day mini table (5 slots × 5 days, highlight this day+slot)
-  const slotKeys=Object.keys(SLOTS);
-  const miniRows=slotKeys.map(sk=>{
-    const cells=currentAdvice.advice.map(a=>{
-      const sa=slotAvailOnDay(a.day,a.date,sk,byDay);
-      const isHere=(a.day===item.day&&sk===prefSlot);
-      const cls=isHere?'here':sa.free>0?'free':'taken';
-      return`<div class="slot-mini-pip ${cls}">${sa.free>0?sa.free:'–'}</div>`;
-    }).join('');
-    const slotC=SLOTS[sk].color;
-    return`<div style="display:contents">
-      <div style="font-size:.64rem;font-weight:600;color:${slotC};display:flex;align-items:center;padding:.3rem 0;border-bottom:1px solid var(--border2);grid-column:1/-1">
-        ${SLOTS[sk].label}
-      </div>
-      ${cells}
-    </div>`;
-  });
-
-  // Actually build a proper mini grid showing all days for THIS slot only
-  const dayPips=currentAdvice.advice.map(a=>{
+    :item.avail.map(s=>{const sc=s.schedule&&s.schedule[item.day];const hrs=sc?`${sc.start}–${sc.end}`:'';return`<div class="staff-chip"><div class="chip-dot" style="background:${s.color}"></div>${s.name.split(' ')[0]}<span class="chip-hours">${hrs}</span></div>`;}).join('');
+  const dayPips=currentAdvice.advice.slice(0,5).map(a=>{
     const sa=slotAvailOnDay(a.day,a.date,prefSlot&&prefSlot!=='free'?prefSlot:'',byDay);
     const isHere=(a.day===item.day);
     const cls=isHere&&sa.free>0?'here':sa.free>0?'free':'taken';
-    return`<div class="slot-mini-day">
-      <div class="slot-mini-label">${DAYSH[a.day]}</div>
-      <div class="slot-mini-pip ${cls}" title="${sa.free} vrij">${sa.free>0?sa.free:'–'}</div>
-    </div>`;
+    return`<div class="slot-mini-day"><div class="slot-mini-label">${DAYSH[a.day]}</div><div class="slot-mini-pip ${cls}">${sa.free>0?sa.free:'–'}</div></div>`;
   }).join('');
-
   return`<div class="option-panel ${i===0?'active':''}" id="opanel-${i}">
     <div class="day-hero">
       <div class="day-hero-left">
         <div class="day-big" style="color:${item.score<-100?'var(--red)':'var(--ink)'}">${DAYNL[item.day]}</div>
         <div class="day-date">${bDateStr}</div>
-        <div class="slot-chip">
-          <div class="slot-dot" style="background:${slotCol}"></div>
-          ${slotLabel}
-        </div>
+        <div class="slot-chip"><div class="slot-dot" style="background:${slotCol}"></div>${slotLabel}</div>
       </div>
       <div class="day-hero-right">
         <div class="match-ring">
-          <svg width="72" height="72" viewBox="0 0 72 72">
-            <circle class="ring-bg" cx="36" cy="36" r="30"/>
-            <circle class="ring-fill" cx="36" cy="36" r="30"
-              stroke="${strokeColor}"
-              stroke-dasharray="${circumference}"
-              stroke-dashoffset="${circumference-dash}"/>
-          </svg>
+          <svg width="72" height="72" viewBox="0 0 72 72"><circle class="ring-bg" cx="36" cy="36" r="30"/>
+            <circle class="ring-fill" cx="36" cy="36" r="30" stroke="${strokeColor}" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${(circ-dash).toFixed(1)}"/></svg>
           <div class="match-pct" style="color:${strokeColor}">${pct}%</div>
         </div>
         <div class="match-lbl">Match</div>
       </div>
     </div>
-
     <div class="reason-block ${reasonCls}">${reasonTxt}</div>
-
     <div style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:.5rem">Beschikbare medewerkers</div>
     <div class="staff-chips">${staffHtml}</div>
-
-    <div style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:.5rem">Tijdslot <strong style="color:${slotCol}">${slotLabel}</strong> — vrije plekken per dag</div>
+    <div style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:.5rem">Tijdslot ${slotLabel} — vrije plekken per dag</div>
     <div class="slot-mini">${dayPips}</div>
   </div>`;
 }
@@ -1303,73 +1494,52 @@ function switchOption(idx){
   activeOptionIdx=idx;
   document.querySelectorAll('.otab').forEach((t,i)=>t.classList.toggle('active',i===idx));
   document.querySelectorAll('.option-panel').forEach((p,i)=>p.classList.toggle('active',i===idx));
-  const item=currentAdvice.advice[idx];
-  updateActionBar(item,currentAdvice.slotLabel);
+  updateActionBar(currentAdvice.advice[idx],currentAdvice.slotLabel);
 }
-
 function nextOption(){
-  const opts=currentAdvice.advice.filter((_,i)=>i<5);
-  const next=(activeOptionIdx+1)%opts.length;
-  switchOption(next);
-  // Scroll tab into view
-  const tab=document.getElementById(`otab-${next}`);
+  const n=(activeOptionIdx+1)%Math.min(currentAdvice.advice.length,5);
+  switchOption(n);
+  const tab=document.getElementById(`otab-${n}`);
   if(tab)tab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
 }
-
 function updateActionBar(item,slotLabel){
   const btn=document.getElementById('confirmBtn');
   const txt=document.getElementById('confirmBtnTxt');
-  const nextBtn=document.getElementById('nextOptionBtn');
+  const nb=document.getElementById('nextOptionBtn');
   const noSlot=item.score<-100||!item.hasSlot;
   btn.disabled=noSlot;
   txt.textContent=noSlot?'Geen capaciteit beschikbaar':`Inplannen op ${DAYNL[item.day]} · ${slotLabel}`;
-  const opts=currentAdvice.advice.filter((_,i)=>i<5);
-  nextBtn.style.display=opts.length>1?'':'none';
+  nb.style.display=Math.min(currentAdvice.advice.length,5)>1?'':'none';
 }
-
 function goConfirm(){
   const item=currentAdvice.advice[activeOptionIdx];
-  const {name,addr,pc,prefSlot,slotLabel}=currentAdvice;
-  // Fill confirm form
-  document.getElementById('confirmTitle').textContent=`Inplannen — ${DAYNL[item.day]} · ${slotLabel}`;
+  const {name,addr,pc,prefSlot}=currentAdvice;
+  document.getElementById('confirmTitle').textContent=`Inplannen — ${DAYNL[item.day]} · ${currentAdvice.slotLabel}`;
   document.getElementById('oName').value=name;
   document.getElementById('oAddr').value=addr||pc;
   document.getElementById('oDate').value=item.date.toISOString().slice(0,10);
-  const orderFrom=prefSlot!=='free'&&SLOTS[prefSlot]?SLOTS[prefSlot].from:document.getElementById('freeFrom')?.value||'09:00';
-  const orderTo=prefSlot!=='free'&&SLOTS[prefSlot]?SLOTS[prefSlot].to:document.getElementById('freeTo')?.value||'11:00';
-  document.getElementById('oFrom').value=orderFrom;
-  document.getElementById('oTo').value=orderTo;
+  const oFrom=prefSlot!=='free'&&SLOTS[prefSlot]?SLOTS[prefSlot].from:(document.getElementById('freeFrom')?document.getElementById('freeFrom').value:'09:00');
+  const oTo=prefSlot!=='free'&&SLOTS[prefSlot]?SLOTS[prefSlot].to:(document.getElementById('freeTo')?document.getElementById('freeTo').value:'11:00');
+  document.getElementById('oFrom').value=oFrom;
+  document.getElementById('oTo').value=oTo;
   document.getElementById('oNote').value='';
   document.getElementById('oSuc').classList.remove('on');
   document.getElementById('oErr').classList.remove('on');
   document.getElementById('oBtn').disabled=false;
   document.getElementById('oBtn').innerHTML='<span>↗</span> Bevestig & plan in';
-  // Switch view
   document.getElementById('optionTabs').style.display='none';
   document.getElementById('optionPanels').style.display='none';
   document.getElementById('sheetActions').style.display='none';
   document.getElementById('confirmPanel').classList.add('active');
 }
-
 function backToAdvice(){
-  const tabs=document.getElementById('optionTabs');
-  const panels=document.getElementById('optionPanels');
-  const actions=document.getElementById('sheetActions');
-  const confirm=document.getElementById('confirmPanel');
-  if(tabs)tabs.style.display='';
-  if(panels)panels.style.display='';
-  if(actions)actions.style.display='';
-  if(confirm)confirm.classList.remove('active');
+  ['optionTabs','optionPanels','sheetActions'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='';});
+  const cp=document.getElementById('confirmPanel');if(cp)cp.classList.remove('active');
 }
-
-// Replace old renderResult — now it just opens the popup
 function renderResult(name,addr,pc,region,advice,prefSlot,slotLabel,byDay){
-  // Keep old inline result hidden (legacy)
-  const wrap=document.getElementById('resultWrap');
-  if(wrap)wrap.style.display='none';
+  const wrap=document.getElementById('resultWrap');if(wrap)wrap.style.display='none';
   openAdvice(name,addr,pc,region,advice,prefSlot,slotLabel,byDay);
 }
-
 
 // ══════════════════════════════════════════════
 // CREATE ORDER
@@ -1388,12 +1558,14 @@ async function createOrder(){
   btn.disabled=true;btn.innerHTML='<div class="spin" style="width:13px;height:13px;border-width:2px"></div> Aanmaken…';
   const payload={operation:'CREATE',orders:[{orderNo:`PS-${Date.now()}`,type:'D',date:oDate,location:{address:oAddr},notes:oNote||undefined,timeWindows:oFrom&&oTo?[{timeFrom:oFrom.replace(':',''),timeTo:oTo.replace(':','')}]:undefined,duration:APPT_DUR_MIN,customField1:oName}]};
   payload.orders[0]=JSON.parse(JSON.stringify(payload.orders[0]));
+  dbg('create_order payload',payload);
   try{
     const res=await fetch(`https://api.optimoroute.com/v1/create_order?key=${encodeURIComponent(ST.apiKey)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const data=await res.json();
-    if(data.success||res.ok){suc.classList.add('on');btn.innerHTML='✓ Aangemaakt';cachedAppts=null;lastWeekKey=null;setTimeout(loadWeekApptsAndPlotMap,600);}
+    dbg('create_order response',data);
+    if(data.success||res.ok){suc.classList.add('on');btn.innerHTML='✓ Aangemaakt';cachedAppts=null;lastWeekKey=null;setTimeout(loadWeekApptsAndPlotMap,800);}
     else throw new Error(data.message||`HTTP ${res.status}`);
-  }catch(e){err.textContent=`❌ ${e.message}`;err.classList.add('on');btn.disabled=false;btn.innerHTML='<span>↗</span> Inplannen in OptimoRoute';}
+  }catch(e){dbg('create_order FOUT',e.message);err.textContent=`❌ ${e.message}`;err.classList.add('on');btn.disabled=false;btn.innerHTML='<span>↗</span> Bevestig & plan in';}
 }
 
 // ══════════════════════════════════════════════
@@ -1446,7 +1618,7 @@ function renderVacSection(){
   const sel=document.getElementById('vacStaff');sel.innerHTML=ST.staff.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
   const list=document.getElementById('vacList');list.innerHTML='';
   if(!ST.vacations.length){list.innerHTML='<div style="font-size:.72rem;color:var(--muted)">Geen verlof ingevoerd.</div>';return;}
-  ST.vacations.forEach((v,i)=>{const sn=ST.staff.find(s=>s.id===v.staffId)?.name||'?';const div=document.createElement('div');div.className='vacitem';div.innerHTML=`<span><strong>${sn}</strong> — ${v.from} t/m ${v.to}</span><button class="vacdel" onclick="removeVac(${i})">✕</button>`;list.appendChild(div);});
+  ST.vacations.forEach((v,i)=>{const sn=ST.staff.find(s=>s.id===v.staffId)?ST.staff.find(s=>s.id===v.staffId).name:'?';const div=document.createElement('div');div.className='vacitem';div.innerHTML=`<span><strong>${sn}</strong> — ${v.from} t/m ${v.to}</span><button class="vacdel" onclick="removeVac(${i})">✕</button>`;list.appendChild(div);});
 }
 function addVac(){const sid=document.getElementById('vacStaff').value;const from=document.getElementById('vacFrom').value;const to=document.getElementById('vacTo').value;if(!sid||!from||!to){alert('Selecteer medewerker en datums.');return;}if(from>to){alert('Einddatum na startdatum.');return;}ST.vacations.push({staffId:sid,from,to});saveST();renderVacSection();}
 function removeVac(i){ST.vacations.splice(i,1);saveST();renderVacSection();}
@@ -1460,50 +1632,102 @@ function renderAnalytics(byDay=null){
   destroyCharts();
   const hasProd=!!byDay;
   document.getElementById('dataNoticeTxt').textContent=hasProd?'Live data van deze week uit OptimoRoute.':'Geen API-verbinding — voorbeelddata.';
-  const sNames=ST.staff.length?ST.staff.map(s=>s.name.split(' ')[0]):['Emma','Lars','Sofie','Daan'];
-  const sCols=ST.staff.length?ST.staff.map(s=>s.color):AVCOLS;
-  const sAppts=sNames.map((_,i)=>hasProd?Math.max(1,Math.round(DAYS.reduce((s,d)=>(byDay[d]||[]).length+s,0)/(ST.staff.length||1)/5)):Math.round(3+Math.random()*3));
+  const sN=ST.staff.length?ST.staff.map(s=>s.name.split(' ')[0]):['Emma','Lars','Sofie','Daan'];
+  const sC=ST.staff.length?ST.staff.map(s=>s.color):AVCOLS;
+  const sA=sN.map((_,i)=>hasProd?Math.max(1,Math.round(DAYS.reduce((s,d)=>(byDay[d]||[]).length+s,0)/(ST.staff.length||1)/5)):Math.round(3+Math.random()*3));
   const monday=getMonday(0);
-  const capPcts=DAYS.map(d=>{if(hasProd&&ST.staff.length){const date=new Date(monday);date.setDate(date.getDate()+DAYS.indexOf(d));const cap=getAvailStaff(d,date).reduce((s,w)=>s+getDayCap(w,d),0);const used=(byDay[d]||[]).length;return cap>0?Math.round(Math.min(100,used/cap*100)):0;}return Math.round(40+Math.random()*45);});
-  const rData=hasProd?buildRegionData(byDay):demoRegionData();
+  const capP=DAYS.map(d=>{if(hasProd&&ST.staff.length){const date=new Date(monday);date.setDate(date.getDate()+DAYS.indexOf(d));const cap=getAvailStaff(d,date).reduce((s,w)=>s+getDayCap(w,d),0);const used=(byDay[d]||[]).length;return cap>0?Math.round(Math.min(100,used/cap*100)):0;}return Math.round(40+Math.random()*45);});
+  const rD=hasProd?buildRegionData(byDay):demoRegionData();
   const tL=['6w','5w','4w','3w','2w','1w','Nu'];
-  const tA=tL.map((_,i)=>Math.round(12+i*3.5+Math.random()*3));
-  const tC=tL.map((_,i)=>Math.round(25+i*4+Math.random()*4));
+  const tA=tL.map((_,i)=>Math.round(12+i*3.5+Math.random()*3));const tC=tL.map((_,i)=>Math.round(25+i*4+Math.random()*4));
   const total=hasProd?DAYS.reduce((s,d)=>s+(byDay[d]||[]).length,0):tA[tA.length-1];
-  const avgCap=Math.round(capPcts.reduce((a,b)=>a+b,0)/capPcts.length);
-  const rVals=Object.values(rData);
-  const avgC=rVals.length?+(rVals.reduce((s,r)=>s+r.avgCluster,0)/rVals.length).toFixed(1):2.3;
+  const avgCap=Math.round(capP.reduce((a,b)=>a+b,0)/capP.length);
+  const rV=Object.values(rD);const avgC=rV.length?+(rV.reduce((s,r)=>s+r.avgCluster,0)/rV.length).toFixed(1):2.3;
   const kmS=Math.round(avgC*17*total/10);
-  document.getElementById('kpi1').textContent=total;document.getElementById('kpi2').textContent=avgCap+'%';document.getElementById('kpi3').textContent=avgC+'x';document.getElementById('kpi4').textContent=kmS+' km';document.getElementById('kpi5').textContent=Object.keys(rData).length;
-  document.getElementById('kd1').textContent=`↑ ${Math.round(total*.11)} t.o.v. vorige week`;document.getElementById('kd2').textContent=`↑ ${Math.round(avgCap*.14)}% verbetering`;document.getElementById('kd3').textContent=`↑ 0.4x t.o.v. zonder clustering`;document.getElementById('kd4').textContent=`≈ ${Math.round(kmS*.13)} uur bespaard`;
+  ['kpi1','kpi2','kpi3','kpi4','kpi5'].forEach((id,i)=>{document.getElementById(id).textContent=[total,avgCap+'%',avgC+'x',kmS+' km',Object.keys(rD).length][i];});
+  ['kd1','kd2','kd3','kd4'].forEach((id,i)=>{document.getElementById(id).textContent=[`↑ ${Math.round(total*.11)} t.o.v. vorige week`,`↑ ${Math.round(avgCap*.14)}% verbetering`,`↑ 0.4x t.o.v. zonder clustering`,`≈ ${Math.round(kmS*.13)} uur bespaard`][i];});
   const bR=Math.round(48+Math.random()*14);const aR=Math.round(bR*.6);
-  document.getElementById('b1').textContent=`${bR} min`;document.getElementById('a1').textContent=`${aR} min`;document.getElementById('b2').textContent='41%';document.getElementById('a2').textContent='22%';document.getElementById('b3').textContent='1.3x';document.getElementById('a3').textContent=`${avgC}x`;document.getElementById('b4').textContent='~65 km';document.getElementById('a4').textContent=`~${Math.round(65*(1-avgC/5))} km`;
-  const G={color:'rgba(0,0,0,.045)'};const C=id=>document.getElementById(id).getContext('2d');
-  charts.staff=new Chart(C('chartStaff'),{type:'bar',data:{labels:sNames,datasets:[{label:'Gem. afspraken/dag',data:sAppts,backgroundColor:sCols.map(c=>c+'bb'),borderColor:sCols,borderWidth:1.5,borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:G},x:{grid:{display:false}}}}});
-  const cCols=capPcts.map(p=>p>=85?'#b0303099':p>=60?'#d4920acc':'#167a5bcc');
-  charts.cap=new Chart(C('chartCap'),{type:'bar',data:{labels:Object.values(DAYSH),datasets:[{label:'Bezetting %',data:capPcts,backgroundColor:cCols,borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'},grid:G},x:{grid:{display:false}}}}});
-  const rL=Object.keys(rData).slice(0,8);const rV=rL.map(r=>rData[r].avgCluster);
-  charts.cluster=new Chart(C('chartCluster'),{type:'bar',data:{labels:rL,datasets:[{label:'Afspraken/rit',data:rV,backgroundColor:rV.map(v=>v>=3?'#167a5bcc':v>=2?'#1e3fd4cc':'#b07400cc'),borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,max:6,grid:G},y:{grid:{display:false}}}}});
-  charts.trend=new Chart(C('chartTrend'),{type:'line',data:{labels:tL,datasets:[{label:'Afspraken',data:tA,borderColor:'#1e3fd4',backgroundColor:'rgba(30,63,212,.07)',tension:.4,fill:true,pointRadius:4,pointBackgroundColor:'#1e3fd4'},{label:'Capaciteit',data:tC,borderColor:'#167a5b',backgroundColor:'rgba(22,122,91,.06)',tension:.4,fill:true,borderDash:[4,3],pointRadius:3,pointBackgroundColor:'#167a5b'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,padding:11,font:{size:10}}}},scales:{y:{beginAtZero:true,grid:G},x:{grid:{display:false}}}}});
+  ['b1','b2','b3','b4'].forEach((id,i)=>{document.getElementById(id).textContent=[`${bR} min`,'41%','1.3x','~65 km'][i];});
+  ['a1','a2','a3','a4'].forEach((id,i)=>{document.getElementById(id).textContent=[`${aR} min`,'22%',`${avgC}x`,`~${Math.round(65*(1-avgC/5))} km`][i];});
+  const G={color:'rgba(0,0,0,.045)'};const Ctx=id=>document.getElementById(id).getContext('2d');
+  charts.staff=new Chart(Ctx('chartStaff'),{type:'bar',data:{labels:sN,datasets:[{label:'Gem. afspraken/dag',data:sA,backgroundColor:sC.map(c=>c+'bb'),borderColor:sC,borderWidth:1.5,borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:G},x:{grid:{display:false}}}}});
+  charts.cap=new Chart(Ctx('chartCap'),{type:'bar',data:{labels:Object.values(DAYSH),datasets:[{label:'Bezetting %',data:capP,backgroundColor:capP.map(p=>p>=85?'#b0303099':p>=60?'#d4920acc':'#167a5bcc'),borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'},grid:G},x:{grid:{display:false}}}}});
+  const rLbls=Object.keys(rD).slice(0,8);const rVals=rLbls.map(r=>rD[r].avgCluster);
+  charts.cluster=new Chart(Ctx('chartCluster'),{type:'bar',data:{labels:rLbls,datasets:[{label:'Afspraken/rit',data:rVals,backgroundColor:rVals.map(v=>v>=3?'#167a5bcc':v>=2?'#1e3fd4cc':'#b07400cc'),borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,max:6,grid:G},y:{grid:{display:false}}}}});
+  charts.trend=new Chart(Ctx('chartTrend'),{type:'line',data:{labels:tL,datasets:[{label:'Afspraken',data:tA,borderColor:'#1e3fd4',backgroundColor:'rgba(30,63,212,.07)',tension:.4,fill:true,pointRadius:4,pointBackgroundColor:'#1e3fd4'},{label:'Capaciteit',data:tC,borderColor:'#167a5b',backgroundColor:'rgba(22,122,91,.06)',tension:.4,fill:true,borderDash:[4,3],pointRadius:3,pointBackgroundColor:'#167a5b'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,padding:11,font:{size:10}}}},scales:{y:{beginAtZero:true,grid:G},x:{grid:{display:false}}}}});
   const tbody=document.getElementById('regionTbody');tbody.innerHTML='';
-  const maxCnt=Math.max(...Object.values(rData).map(r=>r.count),1);
-  Object.entries(rData).sort((a,b)=>b[1].count-a[1].count).forEach(([region,d])=>{
+  const maxCnt=Math.max(...Object.values(rD).map(r=>r.count),1);
+  Object.entries(rD).sort((a,b)=>b[1].count-a[1].count).forEach(([region,d])=>{
     const ec=d.avgCluster>=3?'eff-hi':d.avgCluster>=2?'eff-md':'eff-lo';
     const el=d.avgCluster>=3?'Hoog':d.avgCluster>=2?'Gemiddeld':'Laag';
-    const bw=Math.round(d.count/maxCnt*100);const bc=d.avgCluster>=3?'#167a5b':d.avgCluster>=2?'#1e3fd4':'#d4920a';
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td><strong>${region}</strong></td><td><div class="heatcell"><div class="heatbar" style="width:${bw}px;max-width:100px;background:${bc}"></div>${d.count}</div></td><td>${d.avgCluster}x</td><td>${d.occupancy}%</td><td><span class="effbadge ${ec}">${el}</span></td>`;
+    tr.innerHTML=`<td><strong>${region}</strong></td><td><div class="heatcell"><div class="heatbar" style="width:${Math.round(d.count/maxCnt*100)}px;max-width:100px;background:${d.avgCluster>=3?'#167a5b':d.avgCluster>=2?'#1e3fd4':'#d4920a'}"></div>${d.count}</div></td><td>${d.avgCluster}x</td><td>${d.occupancy}%</td><td><span class="effbadge ${ec}">${el}</span></td>`;
     tbody.appendChild(tr);
   });
 }
-function buildRegionData(byDay){
-  const data={};
-  DAYS.forEach(d=>(byDay[d]||[]).forEach(a=>{if(!data[a.region])data[a.region]={count:0,days:new Set()};data[a.region].count++;data[a.region].days.add(d);}));
-  Object.values(data).forEach(d=>{d.avgCluster=+(d.count/Math.max(d.days.size,1)).toFixed(1);d.occupancy=Math.round(45+Math.random()*38);});
-  return data;
-}
+function buildRegionData(byDay){const data={};DAYS.forEach(d=>(byDay[d]||[]).forEach(a=>{if(!data[a.region])data[a.region]={count:0,days:new Set()};data[a.region].count++;data[a.region].days.add(d);}));Object.values(data).forEach(d=>{d.avgCluster=+(d.count/Math.max(d.days.size,1)).toFixed(1);d.occupancy=Math.round(45+Math.random()*38);});return data;}
 function demoRegionData(){return{'Noord-Holland':{count:18,avgCluster:3.6,occupancy:78},'Zuid-Holland':{count:14,avgCluster:2.8,occupancy:65},'Utrecht':{count:11,avgCluster:2.2,occupancy:58},'Noord-Brabant':{count:9,avgCluster:3.0,occupancy:71},'Gelderland':{count:6,avgCluster:2.0,occupancy:48},'Limburg':{count:4,avgCluster:1.6,occupancy:42},'Overijssel':{count:3,avgCluster:1.5,occupancy:35}};}
+
+
+async function testApiCall(){
+  dbg('=== API TEST ===');
+  dbg('API key aanwezig', !!ST.apiKey);
+  if(!ST.apiKey){dbg('STOP: geen API key');return;}
+  const monday=getMonday(0);
+  const from=monday.toISOString().slice(0,10);
+  const toD=new Date(monday);toD.setDate(toD.getDate()+4);
+  const to=toD.toISOString().slice(0,10);
+  dbg('Test search_orders',{from,to});
+  try{
+    const res=await fetch(`https://api.optimoroute.com/v1/search_orders?key=${encodeURIComponent(ST.apiKey)}`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({dateRange:{from,to},includeOrderData:true,includeScheduleInformation:true})
+    });
+    const raw=await res.text();
+    dbg(`Status: ${res.status}`,{ok:res.ok});
+    dbg('Response preview',raw.slice(0,500));
+    const data=JSON.parse(raw);
+    dbg('Parsed OK',{keys:Object.keys(data),orderCount:(data.orders||[]).length,success:data.success});
+    if(data.orders&&data.orders.length>0){
+      const first=data.orders[0];
+      dbg('Eerste order fields',Object.keys(first));
+      dbg('Eerste order locatie',JSON.stringify(first.location||first.address||{}).slice(0,200));
+    }
+  }catch(e){dbg('TEST FOUT',e.message);}
+}
+
+// Patch toggleDebug to show/hide
+function toggleDebug(){
+  const p=document.getElementById('debugPanel');
+  const isOpen=p.style.display==='flex';
+  p.style.display=isOpen?'none':'flex';
+  if(!isOpen){
+    const log=p.querySelector('.debug-log');
+    log.innerHTML='';
+    debugLog.slice(-60).forEach(e=>{
+      const line=document.createElement('div');
+      line.style.cssText='font-size:.7rem;padding:.15rem 0;border-bottom:1px solid rgba(255,255,255,.04);color:#c9d1d9;';
+      line.innerHTML=`<span style="opacity:.4">${e.ts}</span> <span style="color:#3effc4">${e.msg}</span>${e.data?' <span style="opacity:.4;font-size:.63rem">'+JSON.stringify(e.data).slice(0,150)+'</span>':''}`;
+      log.appendChild(line);
+    });
+    log.scrollTop=9999;
+  }
+}
+
 </script>
+<!-- DEBUG PANEL -->
+<div id="debugPanel" style="position:fixed;bottom:0;left:0;right:0;background:#0d1117;border-top:2px solid #30363d;z-index:9999;flex-direction:column;max-height:320px;font-family:monospace;display:none;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 1rem;border-bottom:1px solid #30363d;flex-shrink:0">
+    <span style="color:#3effc4;font-size:.75rem;font-weight:700">🐛 PlanSlim Debug Console</span>
+    <div style="display:flex;gap:.5rem">
+      <button onclick="testApiCall()" style="background:#1e3fd4;color:#fff;border:none;border-radius:5px;font-size:.68rem;padding:.28rem .7rem;cursor:pointer;font-family:monospace">Test API</button>
+      <button onclick="debugLog=[];document.querySelector('.debug-log').innerHTML=''" style="background:#333;color:#aaa;border:none;border-radius:5px;font-size:.68rem;padding:.28rem .6rem;cursor:pointer;font-family:monospace">Wis</button>
+      <button onclick="toggleDebug()" style="background:#333;color:#aaa;border:none;border-radius:5px;font-size:.68rem;padding:.28rem .6rem;cursor:pointer;font-family:monospace">✕</button>
+    </div>
+  </div>
+  <div class="debug-log" style="flex:1;overflow-y:auto;padding:.5rem 1rem;color:#c9d1d9;"></div>
+</div>
+
 
 <!-- ══════════════════════════════════════════
      ADVICE POPUP SHEET
