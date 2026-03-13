@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlanSlim — Planningsadviseur</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+  :root {
+    --bg: #0a0f1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1f2d45;
+    --accent: #00d4aa;
+    --accent2: #ff6b35;
+    --accent3: #6c63ff;
+    --text: #e8edf5;
+    --muted: #6b7a99;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --card-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── BACKGROUND ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 10% 0%, rgba(0,212,170,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 90% 100%, rgba(108,99,255,0.06) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+    background: rgba(10,15,26,0.85);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.4rem;
+    letter-spacing: -0.03em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .logo span { color: var(--accent); }
+
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+  .status-dot.connected { background: var(--success); box-shadow: 0 0 8px var(--success); }
+
+  /* ─── LAYOUT ─── */
+  .app {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    grid-template-rows: auto 1fr;
+    min-height: calc(100vh - 64px);
+  }
+
+  .sidebar {
+    grid-row: 1 / 3;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    background: rgba(17,24,39,0.5);
+  }
+
+  .main-top {
+    padding: 1.5rem 2rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .main-content {
+    padding: 1.5rem 2rem;
+    overflow-y: auto;
+  }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem;
+    box-shadow: var(--card-shadow);
+  }
+
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  /* ─── FORM ELEMENTS ─── */
+  label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+  }
+
+  input, select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 0.65rem 0.9rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    margin-bottom: 1rem;
+  }
+
+  input:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,212,170,0.12);
+  }
+
+  input[type="password"] { font-family: monospace; letter-spacing: 0.1em; }
+
+  input[type="number"] { width: 100%; }
+
+  /* Day selectors */
+  .days-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .day-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    padding: 0.5rem 0.25rem;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .day-btn.active {
+    background: rgba(0,212,170,0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .day-btn .day-count {
+    display: block;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 400;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .day-btn.active .day-count { color: var(--accent); opacity: 0.7; }
+
+  /* Staff per day */
+  .staff-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .staff-row label {
+    margin: 0;
+    min-width: 60px;
+    font-size: 0.8rem;
+  }
+
+  .staff-row input {
+    margin: 0;
+    width: 70px;
+    text-align: center;
+  }
+
+  /* ─── BUTTONS ─── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #0a0f1a;
+    width: 100%;
+  }
+
+  .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ─── STATS ROW ─── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    padding: 1.25rem 0;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 0.25rem;
+  }
+
+  .stat-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  /* ─── MAP ─── */
+  #map {
+    height: 340px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    background: var(--surface);
+    margin-bottom: 1.5rem;
+  }
+
+  .leaflet-container { background: #0d1621 !important; }
+
+  /* ─── ADVICE TABLE ─── */
+  .advice-section h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .advice-grid {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .advice-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: grid;
+    grid-template-columns: 60px 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    transition: border-color 0.2s;
+  }
+
+  .advice-card:hover { border-color: var(--accent); }
+
+  .advice-card.best { border-left: 3px solid var(--success); }
+  .advice-card.good { border-left: 3px solid var(--warning); }
+  .advice-card.ok { border-left: 3px solid var(--muted); }
+
+  .advice-day {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    text-align: center;
+    line-height: 1;
+  }
+
+  .advice-day small {
+    display: block;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 400;
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .advice-details { min-width: 0; }
+
+  .advice-details strong {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.2rem;
+  }
+
+  .advice-meta {
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .cluster-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+  }
+
+  .pill {
+    background: rgba(0,212,170,0.12);
+    color: var(--accent);
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid rgba(0,212,170,0.2);
+  }
+
+  .pill.orange { background: rgba(255,107,53,0.12); color: var(--accent2); border-color: rgba(255,107,53,0.2); }
+  .pill.purple { background: rgba(108,99,255,0.12); color: var(--accent3); border-color: rgba(108,99,255,0.2); }
+
+  .advice-score {
+    text-align: right;
+  }
+
+  .score-badge {
+    display: inline-block;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+  }
+
+  .score-best { background: rgba(34,197,94,0.15); color: var(--success); }
+  .score-good { background: rgba(245,158,11,0.15); color: var(--warning); }
+  .score-ok { background: rgba(107,122,153,0.15); color: var(--muted); }
+
+  /* ─── APPOINTMENT LIST ─── */
+  .appointments-section {
+    margin-top: 1.5rem;
+  }
+
+  .appt-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+
+  .appt-table th {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .appt-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid rgba(31,45,69,0.5);
+    vertical-align: middle;
+  }
+
+  .appt-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .region-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  /* ─── LOADING ─── */
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 3rem;
+    color: var(--muted);
+  }
+
+  .loading.active { display: block; }
+
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 1rem;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── EMPTY / ERROR ─── */
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--muted);
+  }
+
+  .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
+
+  .error-msg {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    color: #fca5a5;
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+    display: none;
+  }
+
+  .error-msg.active { display: block; }
+
+  /* ─── TOOLTIP ─── */
+  [title] { cursor: help; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); grid-row: auto; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ─── SCROLLBAR ─── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Fade in animation */
+  .fade-in {
+    animation: fadeIn 0.4s ease forwards;
+    opacity: 0;
+  }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  .section-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0.25rem 0 1rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Plan<span>Slim</span></div>
+  <div class="header-status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Niet verbonden</span>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="sidebar">
+
+    <!-- API Instellingen -->
+    <div class="card">
+      <div class="card-title">🔑 OptimoRoute Koppeling</div>
+      <label>API Key</label>
+      <input type="password" id="apiKey" placeholder="uw-api-key-hier" autocomplete="off">
+      <label>Datum van afspraken</label>
+      <input type="date" id="targetDate" value="">
+      <div id="apiError" class="error-msg"></div>
+      <button class="btn btn-primary" onclick="loadAppointments()">
+        <span>↻</span> Afspraken Ophalen
+      </button>
+    </div>
+
+    <!-- Medewerkers per dag -->
+    <div class="card">
+      <div class="card-title">👥 Beschikbare Medewerkers</div>
+      <div id="staffGrid">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+
+    <!-- Instellingen -->
+    <div class="card">
+      <div class="card-title">⚙️ Clustering Instellingen</div>
+      <label>Regio methode</label>
+      <select id="clusterMethod">
+        <option value="province">Provincie</option>
+        <option value="postal2">Postcode (2-cijferig)</option>
+        <option value="postal4">Postcode (4-cijferig)</option>
+      </select>
+      <label>Max afspraken per medewerker/dag</label>
+      <input type="number" id="maxPerWorker" value="8" min="1" max="20">
+      <label>Voorkeur reistijd (max min)</label>
+      <input type="number" id="maxTravel" value="30" min="5" max="120">
+    </div>
+
+    <!-- Info -->
+    <div style="font-size:0.72rem; color: var(--muted); padding: 0 0.25rem; line-height:1.6;">
+      <strong style="color:var(--text)">Hoe werkt het?</strong><br>
+      PlanSlim haalt je openstaande afspraken op via de OptimoRoute API, clustert ze geografisch op regio en geeft per dag een advies op basis van beschikbare medewerkers en reisafstand.
+    </div>
+
+  </aside>
+
+  <!-- ═══ MAIN ═══ -->
+  <div style="display:flex; flex-direction:column; overflow:hidden;">
+
+    <!-- Stats top bar -->
+    <div class="main-top">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="statTotal">—</div>
+          <div class="stat-label">Afspraken</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statRegions">—</div>
+          <div class="stat-label">Regio's</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statCapacity">—</div>
+          <div class="stat-label">Totale capaciteit</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statAdvice" style="color: var(--success)">—</div>
+          <div class="stat-label">Beste dag</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="main-content">
+
+      <!-- Map -->
+      <div id="map">
+        <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:0.85rem;">
+          🗺️ Kaart verschijnt na ophalen afspraken
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div class="loading" id="loadingDiv">
+        <div class="spinner"></div>
+        <p>Afspraken ophalen & clustering berekenen…</p>
+      </div>
+
+      <!-- Advice -->
+      <div id="adviceSection" style="display:none;">
+        <div class="advice-section">
+          <h2>📅 Planningsadvies per dag</h2>
+          <div class="advice-grid" id="adviceGrid"></div>
+        </div>
+
+        <div class="appointments-section">
+          <h2 style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;">
+            📋 Afspraakenoverzicht
+          </h2>
+          <div style="overflow-x:auto;">
+            <table class="appt-table">
+              <thead>
+                <tr>
+                  <th>Naam</th>
+                  <th>Adres</th>
+                  <th>Regio</th>
+                  <th>Status</th>
+                  <th>Advies dag</th>
+                </tr>
+              </thead>
+              <tbody id="apptTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">📍</div>
+        <p style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.5rem;">Klaar om te starten</p>
+        <p style="font-size:0.82rem;">Voer je OptimoRoute API key in, kies een datum en klik op <strong>Afspraken Ophalen</strong>.</p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// CONFIG & STATE
+// ─────────────────────────────────────────────
+const DAYS = ['ma','di','wo','do','vr'];
+const DAY_NAMES = { ma:'Maandag', di:'Dinsdag', wo:'Woensdag', do:'Donderdag', vr:'Vrijdag' };
+const CLUSTER_COLORS = ['#00d4aa','#ff6b35','#6c63ff','#f59e0b','#ec4899','#22c55e','#0ea5e9','#a855f7'];
+
+let state = {
+  appointments: [],
+  clusters: {},
+  staffPerDay: { ma:3, di:3, wo:3, do:3, vr:3 },
+  mapInstance: null,
+  mapLayers: [],
+  apiKey: ''
+};
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Set default date to today or next Monday
+  const today = new Date();
+  document.getElementById('targetDate').value = today.toISOString().split('T')[0];
+
+  renderStaffGrid();
+  initMap();
+});
+
+function renderStaffGrid() {
+  const grid = document.getElementById('staffGrid');
+  grid.innerHTML = '';
+
+  // Days toggle
+  const daysDiv = document.createElement('div');
+  daysDiv.className = 'days-grid';
+  DAYS.forEach(day => {
+    const btn = document.createElement('button');
+    btn.className = 'day-btn active';
+    btn.dataset.day = day;
+    btn.innerHTML = `${DAY_NAMES[day].slice(0,2)}<span class="day-count">${state.staffPerDay[day]}p</span>`;
+    btn.onclick = () => {
+      btn.classList.toggle('active');
+      updateStaffInputVisibility();
+    };
+    daysDiv.appendChild(btn);
+  });
+  grid.appendChild(daysDiv);
+
+  // Staff inputs
+  const staffDiv = document.createElement('div');
+  staffDiv.id = 'staffInputs';
+  DAYS.forEach(day => {
+    const row = document.createElement('div');
+    row.className = 'staff-row';
+    row.dataset.day = day;
+    row.innerHTML = `
+      <label>${DAY_NAMES[day].slice(0,2)}</label>
+      <input type="number" min="1" max="20" value="${state.staffPerDay[day]}"
+        oninput="state.staffPerDay['${day}']=parseInt(this.value)||1; updateDayBtn('${day}')">
+    `;
+    staffDiv.appendChild(row);
+  });
+  grid.appendChild(staffDiv);
+}
+
+function updateDayBtn(day) {
+  const btn = document.querySelector(`.day-btn[data-day="${day}"]`);
+  const count = btn.querySelector('.day-count');
+  if (count) count.textContent = `${state.staffPerDay[day]}p`;
+}
+
+function updateStaffInputVisibility() {
+  DAYS.forEach(day => {
+    const btn = document.querySelector(`.day-btn[data-day="${day}"]`);
+    const row = document.querySelector(`#staffInputs .staff-row[data-day="${day}"]`);
+    if (row) row.style.display = btn.classList.contains('active') ? 'flex' : 'none';
+  });
+}
+
+// ─────────────────────────────────────────────
+// MAP
+// ─────────────────────────────────────────────
+function initMap() {
+  if (state.mapInstance) return;
+  const mapEl = document.getElementById('map');
+  mapEl.innerHTML = '';
+
+  state.mapInstance = L.map('map', {
+    center: [52.3, 5.3],
+    zoom: 7,
+    zoomControl: true,
+    attributionControl: false
+  });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 18
+  }).addTo(state.mapInstance);
+}
+
+function clearMapLayers() {
+  state.mapLayers.forEach(l => state.mapInstance.removeLayer(l));
+  state.mapLayers = [];
+}
+
+function plotAppointmentsOnMap(appointments, clusters) {
+  clearMapLayers();
+
+  const regionColorMap = {};
+  let colorIdx = 0;
+  Object.keys(clusters).forEach(region => {
+    regionColorMap[region] = CLUSTER_COLORS[colorIdx % CLUSTER_COLORS.length];
+    colorIdx++;
+  });
+
+  appointments.forEach(appt => {
+    if (!appt.lat || !appt.lng) return;
+    const color = regionColorMap[appt.region] || '#888';
+    const marker = L.circleMarker([appt.lat, appt.lng], {
+      radius: 7,
+      fillColor: color,
+      color: '#fff',
+      weight: 1.5,
+      fillOpacity: 0.85
+    }).addTo(state.mapInstance);
+
+    marker.bindPopup(`
+      <div style="font-family:'DM Sans',sans-serif;font-size:13px;min-width:160px">
+        <strong style="color:#00d4aa">${appt.name || 'Afspraak'}</strong><br>
+        ${appt.address || ''}<br>
+        <span style="color:#6b7a99">Regio: ${appt.region}</span>
+      </div>
+    `);
+    state.mapLayers.push(marker);
+  });
+
+  // Fit bounds
+  const coords = appointments.filter(a => a.lat && a.lng).map(a => [a.lat, a.lng]);
+  if (coords.length > 0) {
+    state.mapInstance.fitBounds(coords, { padding: [30, 30] });
+  }
+}
+
+// ─────────────────────────────────────────────
+// GEO: postcode → regio
+// ─────────────────────────────────────────────
+function getRegion(postalCode, method) {
+  if (!postalCode) return 'Onbekend';
+  const clean = postalCode.replace(/\s/g, '').toUpperCase();
+  const digits = clean.match(/^\d+/)?.[0] || '';
+
+  if (method === 'postal2') return digits.slice(0, 2) + 'xx';
+  if (method === 'postal4') return digits.slice(0, 4);
+
+  // Province based on first 2 digits
+  const pc = parseInt(digits.slice(0, 4));
+  if (pc >= 1000 && pc <= 1299) return 'Amsterdam';
+  if (pc >= 1300 && pc <= 1499) return 'Flevoland';
+  if (pc >= 1500 && pc <= 1999) return 'Noord-Holland';
+  if (pc >= 2000 && pc <= 2999) return 'Zuid-Holland';
+  if (pc >= 3000 && pc <= 3599) return 'Rotterdam/ZH';
+  if (pc >= 3600 && pc <= 3999) return 'Utrecht';
+  if (pc >= 4000 && pc <= 4499) return 'Zeeland';
+  if (pc >= 4500 && pc <= 4999) return 'Noord-Brabant West';
+  if (pc >= 5000 && pc <= 5799) return 'Noord-Brabant Oost';
+  if (pc >= 5800 && pc <= 5999) return 'Limburg Noord';
+  if (pc >= 6000 && pc <= 6599) return 'Limburg';
+  if (pc >= 6600 && pc <= 6999) return 'Gelderland Zuid';
+  if (pc >= 7000 && pc <= 7499) return 'Gelderland Noord';
+  if (pc >= 7500 && pc <= 7999) return 'Overijssel';
+  if (pc >= 8000 && pc <= 8999) return 'Friesland/Flevoland';
+  if (pc >= 9000 && pc <= 9299) return 'Groningen';
+  if (pc >= 9300 && pc <= 9699) return 'Drenthe';
+  if (pc >= 9700 && pc <= 9999) return 'Groningen Noord';
+  return 'Overig';
+}
+
+// ─────────────────────────────────────────────
+// GEOCODE (Nominatim fallback, no key needed)
+// ─────────────────────────────────────────────
+async function geocodeAddress(address) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address + ', Nederland')}&format=json&limit=1`;
+    const res = await fetch(url, { headers: { 'User-Agent': 'PlanSlim/1.0' } });
+    const data = await res.json();
+    if (data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+  } catch(e) {}
+  return null;
+}
+
+// ─────────────────────────────────────────────
+// OPTIMOROUTE API
+// ─────────────────────────────────────────────
+async function loadAppointments() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const date = document.getElementById('targetDate').value;
+  const errorDiv = document.getElementById('apiError');
+
+  errorDiv.className = 'error-msg';
+  errorDiv.textContent = '';
+
+  if (!apiKey) {
+    errorDiv.classList.add('active');
+    errorDiv.textContent = '⚠️ Vul een API key in.';
+    return;
+  }
+  if (!date) {
+    errorDiv.classList.add('active');
+    errorDiv.textContent = '⚠️ Kies een datum.';
+    return;
+  }
+
+  state.apiKey = apiKey;
+
+  setLoading(true);
+
+  try {
+    // OptimoRoute: search orders by date
+    const url = `https://api.optimoroute.com/v1/search_orders?key=${encodeURIComponent(apiKey)}`;
+    const body = {
+      dateRange: { from: date, to: date },
+      includeOrderData: true,
+      includeScheduleInformation: true
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`API fout (${res.status}): ${errText}`);
+    }
+
+    const data = await res.json();
+    const orders = data.orders || [];
+
+    if (orders.length === 0) {
+      // Try get_routes as alternative
+      await tryGetRoutes(apiKey, date);
+      return;
+    }
+
+    await processOrders(orders);
+
+  } catch(e) {
+    setLoading(false);
+    errorDiv.classList.add('active');
+    errorDiv.textContent = `❌ ${e.message}`;
+    setStatus(false, 'Verbinding mislukt');
+  }
+}
+
+async function tryGetRoutes(apiKey, date) {
+  const errorDiv = document.getElementById('apiError');
+  try {
+    const url = `https://api.optimoroute.com/v1/get_routes?key=${encodeURIComponent(apiKey)}&date=${date}&include_orders=true`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`API fout (${res.status})`);
+    const data = await res.json();
+
+    let orders = [];
+    (data.routes || []).forEach(route => {
+      (route.stops || []).forEach(stop => {
+        if (stop.order) orders.push(stop.order);
+      });
+    });
+
+    if (orders.length === 0) {
+      // Use demo data
+      await loadDemoData();
+      return;
+    }
+
+    await processOrders(orders);
+  } catch(e) {
+    setLoading(false);
+    errorDiv.classList.add('active');
+    errorDiv.textContent = `❌ Fout bij API aanroep: ${e.message}. Controleer uw API key en probeer opnieuw.`;
+    setStatus(false, 'Verbinding mislukt');
+  }
+}
+
+async function processOrders(orders) {
+  setStatus(true, `${orders.length} afspraken geladen`);
+
+  const method = document.getElementById('clusterMethod').value;
+
+  // Parse appointments
+  let appointments = orders.map((order, i) => {
+    const loc = order.location || order.address || {};
+    const postalCode = loc.postalCode || loc.postal_code || '';
+    const address = [loc.address, loc.city].filter(Boolean).join(', ') ||
+                    order.address || 'Onbekend adres';
+    return {
+      id: order.id || order.orderNo || i,
+      name: order.name || order.notes || `Afspraak ${i+1}`,
+      address,
+      postalCode,
+      city: loc.city || '',
+      lat: parseFloat(loc.lat || loc.latitude || 0) || null,
+      lng: parseFloat(loc.lng || loc.longitude || 0) || null,
+      region: getRegion(postalCode, method),
+      status: order.status || 'scheduled'
+    };
+  });
+
+  // Geocode missing coords (batch, max 5 to avoid rate limiting)
+  const missing = appointments.filter(a => !a.lat || !a.lng).slice(0, 5);
+  for (const appt of missing) {
+    const geo = await geocodeAddress(appt.address);
+    if (geo) { appt.lat = geo.lat; appt.lng = geo.lng; }
+    await new Promise(r => setTimeout(r, 300)); // rate limit
+  }
+
+  state.appointments = appointments;
+  renderResults(appointments, method);
+}
+
+async function loadDemoData() {
+  // Demo dataset for testing without real API
+  const demoOrders = [
+    { id:1, name:'De Vries Familie', location:{ address:'Damrak 1', city:'Amsterdam', postalCode:'1012', lat:52.376, lng:4.897 } },
+    { id:2, name:'Jansen BV', location:{ address:'Nieuwezijds 70', city:'Amsterdam', postalCode:'1012', lat:52.373, lng:4.892 } },
+    { id:3, name:'Bakker & Zn', location:{ address:'Herengracht 100', city:'Amsterdam', postalCode:'1015', lat:52.375, lng:4.885 } },
+    { id:4, name:'Smit Installatie', location:{ address:'Binnenhof 1', city:'Den Haag', postalCode:'2513', lat:52.080, lng:4.314 } },
+    { id:5, name:'Peters Holding', location:{ address:'Spui 10', city:'Den Haag', postalCode:'2511', lat:52.075, lng:4.310 } },
+    { id:6, name:'Van Dijk Transport', location:{ address:'Stadhuisplein 1', city:'Rotterdam', postalCode:'3012', lat:51.922, lng:4.479 } },
+    { id:7, name:'Klaassen & Co', location:{ address:'Coolsingel 100', city:'Rotterdam', postalCode:'3011', lat:51.920, lng:4.475 } },
+    { id:8, name:'Willems Techniek', location:{ address:'Domtoren', city:'Utrecht', postalCode:'3512', lat:52.090, lng:5.121 } },
+    { id:9, name:'Mulder Groep', location:{ address:'Vredenburg 1', city:'Utrecht', postalCode:'3511', lat:52.092, lng:5.115 } },
+    { id:10, name:'Hendriks Zorg', location:{ address:'Grote Markt 1', city:'Eindhoven', postalCode:'5611', lat:51.440, lng:5.478 } },
+    { id:11, name:'Kok Advies', location:{ address:'Willemskade 1', city:'Eindhoven', postalCode:'5612', lat:51.445, lng:5.482 } },
+    { id:12, name:'Driessen BV', location:{ address:'Vismarkt 1', city:'Groningen', postalCode:'9711', lat:53.219, lng:6.567 } },
+  ];
+
+  document.getElementById('apiError').classList.add('active');
+  document.getElementById('apiError').style.background = 'rgba(245,158,11,0.1)';
+  document.getElementById('apiError').style.borderColor = 'rgba(245,158,11,0.2)';
+  document.getElementById('apiError').style.color = '#fde68a';
+  document.getElementById('apiError').textContent = '⚠️ Geen afspraken gevonden voor deze datum. Demodata wordt getoond.';
+
+  await processOrders(demoOrders);
+}
+
+// ─────────────────────────────────────────────
+// RENDER RESULTS
+// ─────────────────────────────────────────────
+function renderResults(appointments, method) {
+  setLoading(false);
+
+  // Build clusters
+  const clusters = {};
+  appointments.forEach(appt => {
+    if (!clusters[appt.region]) clusters[appt.region] = [];
+    clusters[appt.region].push(appt);
+  });
+  state.clusters = clusters;
+
+  // Update stats
+  document.getElementById('statTotal').textContent = appointments.length;
+  document.getElementById('statRegions').textContent = Object.keys(clusters).length;
+
+  const activeDays = DAYS.filter(d => document.querySelector(`.day-btn[data-day="${d}"]`)?.classList.contains('active'));
+  const totalCap = activeDays.reduce((sum, d) => sum + (state.staffPerDay[d] || 0), 0);
+  const maxPerWorker = parseInt(document.getElementById('maxPerWorker').value) || 8;
+  document.getElementById('statCapacity').textContent = totalCap * maxPerWorker;
+
+  // Plot map
+  initMap();
+  plotAppointmentsOnMap(appointments, clusters);
+
+  // Generate advice
+  const advice = generateAdvice(clusters, activeDays, maxPerWorker);
+  renderAdvice(advice);
+
+  // Best day
+  if (advice.length > 0) {
+    document.getElementById('statAdvice').textContent = DAY_NAMES[advice[0].day].slice(0,2);
+  }
+
+  // Appointment table
+  renderAppointmentTable(appointments, advice);
+
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('adviceSection').style.display = 'block';
+  document.getElementById('adviceSection').className = 'fade-in';
+}
+
+// ─────────────────────────────────────────────
+// ADVICE ALGORITHM
+// ─────────────────────────────────────────────
+function generateAdvice(clusters, activeDays, maxPerWorker) {
+  const regionList = Object.entries(clusters).sort((a,b) => b[1].length - a[1].length);
+  const totalAppts = Object.values(clusters).flat().length;
+  const advice = [];
+
+  activeDays.forEach(day => {
+    const workers = state.staffPerDay[day] || 1;
+    const capacity = workers * maxPerWorker;
+    const utilization = Math.min(100, Math.round((totalAppts / capacity) * 100));
+
+    // Cluster efficiency: regions that fit in fewer workers
+    const clustersPerWorker = Math.ceil(regionList.length / workers);
+    const topRegions = regionList.slice(0, workers * 2).map(([r,a]) => ({ region: r, count: a.length }));
+
+    // Score: high capacity + good cluster ratio = better
+    const score = Math.round(
+      (capacity >= totalAppts ? 40 : (capacity / totalAppts) * 40) +
+      (workers >= regionList.length ? 30 : (workers / regionList.length) * 30) +
+      (100 - utilization) * 0.3
+    );
+
+    advice.push({ day, workers, capacity, utilization, topRegions, score, clustersPerWorker });
+  });
+
+  // Sort by score desc
+  return advice.sort((a,b) => b.score - a.score);
+}
+
+function renderAdvice(advice) {
+  const grid = document.getElementById('adviceGrid');
+  grid.innerHTML = '';
+
+  advice.forEach((item, idx) => {
+    const tier = idx === 0 ? 'best' : idx <= 2 ? 'good' : 'ok';
+    const scoreClass = idx === 0 ? 'score-best' : idx <= 2 ? 'score-good' : 'score-ok';
+    const label = idx === 0 ? '⭐ Beste keuze' : idx === 1 ? 'Goed' : 'Mogelijk';
+
+    const regionPills = item.topRegions.slice(0,4).map((r, i) => {
+      const cls = i === 0 ? '' : i === 1 ? 'orange' : 'purple';
+      return `<span class="pill ${cls}">${r.region} (${r.count})</span>`;
+    }).join('');
+
+    const card = document.createElement('div');
+    card.className = `advice-card ${tier} fade-in`;
+    card.style.animationDelay = `${idx * 0.07}s`;
+    card.innerHTML = `
+      <div class="advice-day">
+        ${DAY_NAMES[item.day].slice(0,2)}
+        <small>${DAY_NAMES[item.day]}</small>
+      </div>
+      <div class="advice-details">
+        <strong>${item.workers} medewerker${item.workers !== 1 ? 's' : ''} — max ${item.capacity} afspraken</strong>
+        <div class="advice-meta">Bezettingsgraad: ${item.utilization}% · ${label}</div>
+        <div class="cluster-pills">${regionPills}</div>
+      </div>
+      <div class="advice-score">
+        <span class="score-badge ${scoreClass}">${item.score}</span>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function renderAppointmentTable(appointments, advice) {
+  const tbody = document.getElementById('apptTableBody');
+  tbody.innerHTML = '';
+
+  // Build region → best day map
+  const regionDayMap = {};
+  const regionList = Object.entries(state.clusters).sort((a,b) => b[1].length - a[1].length);
+  advice.forEach((adv, idx) => {
+    const startRegion = idx * Math.ceil(regionList.length / advice.length);
+    const endRegion = Math.min(regionList.length, startRegion + Math.ceil(regionList.length / advice.length));
+    regionList.slice(startRegion, endRegion).forEach(([region]) => {
+      regionDayMap[region] = adv.day;
+    });
+  });
+
+  const colorMap = {};
+  let ci = 0;
+  Object.keys(state.clusters).forEach(r => { colorMap[r] = CLUSTER_COLORS[ci++ % CLUSTER_COLORS.length]; });
+
+  appointments.forEach(appt => {
+    const bestDay = regionDayMap[appt.region] || advice[0]?.day || '—';
+    const color = colorMap[appt.region] || '#888';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${appt.name}</td>
+      <td style="color:var(--muted)">${appt.address}</td>
+      <td><span class="region-badge" style="background:${color}22;color:${color};border:1px solid ${color}44">${appt.region}</span></td>
+      <td style="color:var(--muted)">${appt.status}</td>
+      <td><strong>${bestDay !== '—' ? DAY_NAMES[bestDay] : '—'}</strong></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ─────────────────────────────────────────────
+// UI HELPERS
+// ─────────────────────────────────────────────
+function setLoading(on) {
+  document.getElementById('loadingDiv').className = on ? 'loading active' : 'loading';
+  document.getElementById('emptyState').style.display = on ? 'none' : '';
+  if (on) document.getElementById('adviceSection').style.display = 'none';
+}
+
+function setStatus(ok, text) {
+  const dot = document.getElementById('statusDot');
+  const label = document.getElementById('statusText');
+  dot.className = 'status-dot' + (ok ? ' connected' : '');
+  label.textContent = text;
+}
+</script>
+</body>
+</html>
