@@ -1196,29 +1196,34 @@ async function fetchWeekAppts(monday){
   }
 }
 
-// ── Parse orders: detect coordinates from every possible field ──
+// ── Parse orders: OptimoRoute wraps fields inside order.data{} ──
 async function parseOrders(orders,monday){
   const byDay={};DAYS.forEach(d=>byDay[d]=[]);
   const toGeocode=[];
 
   for(const o of orders){
-    // Try every possible location structure OR has been returned
-    const loc=o.location||o.locationData||{};
-    const addrObj=o.address||{};
+    // OptimoRoute search_orders returns: { id, data: { orderNo, date, location, timeWindows, ... } }
+    // Support both flattened (get_routes) and nested (search_orders) formats
+    const d=o.data||o;  // ← THE KEY FIX: unwrap data{}
 
-    // Postcode — try many field paths
+    // Location: try data.location first, then root
+    const loc=d.location||d.locationData||o.location||{};
+    const addrObj=d.address||o.address||{};
+
+    // Postcode
     const pc=((loc.postalCode||loc.postal_code||loc.zip||
                addrObj.postalCode||addrObj.postal_code||
-               o.postalCode||o.postal_code||o.zip||'')+'').replace(/\s/g,'').toUpperCase();
+               d.postalCode||d.postal_code||o.postalCode||'')+'').replace(/\s/g,'').toUpperCase();
 
-    // Date
-    const ds=(o._date||o.date||o.scheduledAt||o.scheduled_at||'').slice(0,10);
-    if(!ds)continue;
+    // Date: inside data{} for search_orders
+    const ds=(d.date||o._date||o.date||d.scheduledAt||'').slice(0,10);
+    if(!ds){dbg('order skip: geen datum',{id:o.id});continue;}
     const idx=Math.round((new Date(ds)-monday)/86400000);
     if(idx<0||idx>4)continue;
 
-    // Time slot detection from timeWindows
-    const tw=(o.timeWindows||o.time_windows||[])[0]||o.timeWindow||o.time_window||null;
+    // Time windows: inside data{}
+    const tws=d.timeWindows||d.time_windows||o.timeWindows||[];
+    const tw=tws[0]||d.timeWindow||o.timeWindow||null;
     let slot=null;
     if(tw){
       const rawFrom=String(tw.timeFrom||tw.time_from||tw.from||tw.start||'').replace(':','').padStart(4,'0');
@@ -1230,40 +1235,50 @@ async function parseOrders(orders,monday){
       else if(h===20)slot='20-22';
     }
 
-    // Coordinates — try every path
-    let lat=parseFloat(loc.lat||loc.latitude||loc.Lat||addrObj.lat||addrObj.latitude||o.lat||o.latitude||0)||null;
-    let lng=parseFloat(loc.lng||loc.lon||loc.longitude||loc.Lng||addrObj.lng||addrObj.lon||addrObj.longitude||o.lng||o.lon||o.longitude||0)||null;
+    // Coordinates — location may have lat/lng or just address string
+    let lat=parseFloat(loc.lat||loc.latitude||loc.Lat||o.lat||0)||null;
+    let lng=parseFloat(loc.lng||loc.lon||loc.longitude||loc.Lng||o.lng||o.lon||0)||null;
     let geocoded=false;
 
-    // Build best address string for geocoding
-    const addrParts=[
-      loc.address||loc.street||addrObj.address||addrObj.street||o.street||'',
-      loc.city||addrObj.city||o.city||'',
-    ].filter(Boolean);
-    const addrStr=addrParts.join(', ')||pc;
+    // Best address string for geocoding
+    // loc.address is typically the full address string in OptimoRoute
+    const locAddrStr=typeof loc.address==='string'?loc.address:
+                     typeof loc==='string'?loc:'';
+    const addrParts=[locAddrStr||loc.street||'', loc.city||''].filter(Boolean);
+    const addrStr=addrParts.join(', ')||(pc?pc+', Nederland':'');
 
-    const name=o.name||o.orderNo||o.order_no||o.customField1||o.custom_field_1||o.notes?.slice(0,30)||'Afspraak';
+    // Name: orderNo is inside data{}
+    const name=d.orderNo||d.order_no||d.name||d.customField1||
+               o.orderNo||o.name||o.customField1||'Afspraak';
 
     const obj={name,postalCode:pc,address:addrStr,region:getRegion(pc,ST.clusterMethod),slot,lat,lng,geocoded};
     byDay[DAYS[idx]].push(obj);
 
-    if((!lat||!lng)&&(addrStr||pc)&&toGeocode.length<25){
+    if((!lat||!lng)&&(addrStr||pc)){
       toGeocode.push({obj,query:addrStr||pc});
     }
   }
 
-  dbg(`parseOrders: ${orders.length} orders → ${toGeocode.length} te geocoderen`);
+  const withCoords=Object.values(byDay).flat().filter(a=>a.lat&&a.lng).length;
+  dbg(`parseOrders: ${orders.length} orders verwerkt`,{
+    totaal:Object.values(byDay).flat().length,
+    metCoords:withCoords,
+    teGeocoderen:toGeocode.length,
+    perDag:Object.fromEntries(DAYS.map(d=>[d,(byDay[d]||[]).length]))
+  });
 
-  // Geocode in batches with proper rate limiting (Nominatim: max 1/sec)
-  for(const {obj,query} of toGeocode){
-    // First try postcode-based fallback (instant, no API needed)
+  // Immediate postcode fallback for all without coords
+  toGeocode.forEach(({obj})=>{
     if(obj.postalCode&&validPC(obj.postalCode)){
       const [flat,flng]=pcToLL(obj.postalCode);
-      obj.lat=flat;obj.lng=flng;obj.geocoded=true; // mark as approximate
+      obj.lat=flat;obj.lng=flng;obj.geocoded=true;
     }
-    // Then try real geocoding in background (don't await for map speed)
-    geocodeInBackground(obj,query);
-  }
+  });
+
+  // Real geocoding in background (throttled, no await)
+  toGeocode.forEach(({obj,query},i)=>{
+    if(query&&query.length>3)setTimeout(()=>geocodeInBackground(obj,query),i*400);
+  });
 
   return byDay;
 }
@@ -1303,12 +1318,16 @@ async function importDrivers(){
     dbg('get_drivers response',raw.slice(0,500));
     if(!res.ok)throw new Error(`HTTP ${res.status}`);
     const data=JSON.parse(raw);
-    const drivers=data.drivers||data.result||[];
+    const drivers=data.drivers||data.result||data.data||[];
     dbg('Drivers gevonden',drivers.length);
-    if(!drivers.length)throw new Error('Geen chauffeurs gevonden in OptimoRoute');
+    dbg('Drivers response keys',Object.keys(data));
+    if(drivers.length>0)dbg('Eerste driver voorbeeld',JSON.stringify(drivers[0]).slice(0,300));
+    if(!drivers.length)throw new Error(`Geen chauffeurs — response keys: ${Object.keys(data).join(',')}`);
     let added=0;
-    drivers.forEach(d=>{
-      const name=d.name||d.driverName||d.driver_name||d.email||'Onbekend';
+    drivers.forEach(dr=>{
+      // Support both flat and nested (dr.data{}) structure
+      const d=dr.data||dr;
+      const name=d.name||d.driverName||d.driver_name||d.email||dr.name||dr.email||'Onbekend';
       // Don't duplicate
       if(ST.staff.some(s=>s.name===name))return;
       const id='s'+Date.now()+Math.random();
@@ -1690,8 +1709,11 @@ async function testApiCall(){
     dbg('Parsed OK',{keys:Object.keys(data),orderCount:(data.orders||[]).length,success:data.success});
     if(data.orders&&data.orders.length>0){
       const first=data.orders[0];
-      dbg('Eerste order fields',Object.keys(first));
-      dbg('Eerste order locatie',JSON.stringify(first.location||first.address||{}).slice(0,200));
+      dbg('Eerste order root keys',Object.keys(first));
+      dbg('Eerste order data{} keys',first.data?Object.keys(first.data):'geen data{} veld');
+      dbg('Eerste order locatie (data.location)',JSON.stringify((first.data||first).location||{}).slice(0,300));
+      dbg('Eerste order datum',(first.data||first).date||first.scheduledAt||'?');
+      dbg('Eerste order timeWindows',JSON.stringify((first.data||first).timeWindows||[]).slice(0,200));
     }
   }catch(e){dbg('TEST FOUT',e.message);}
 }
