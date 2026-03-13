@@ -555,6 +555,29 @@ nav{background:var(--ink);height:52px;display:flex;align-items:center;justify-co
 
 /* Loading state */
 .dagloader{display:flex;align-items:center;justify-content:center;padding:3rem;gap:.75rem;color:var(--muted);font-size:.8rem;}
+
+/* ── Default schedule panel ── */
+.default-sched-panel{background:var(--surface);border:1.5px solid var(--blue);border-radius:var(--r);padding:1.2rem 1.4rem;box-shadow:var(--shadow);margin-bottom:1.3rem;}
+.default-sched-panel h2{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:800;margin-bottom:.25rem;}
+.default-sched-panel .sub{font-size:.72rem;color:var(--muted);margin-bottom:1rem;}
+.ds-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.75rem;margin-bottom:1rem;}
+.ds-day{background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:.75rem .9rem;}
+.ds-day-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;}
+.ds-day-name{font-family:'Syne',sans-serif;font-weight:800;font-size:.82rem;}
+.ds-toggle{display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--muted);cursor:pointer;}
+.ds-toggle input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--blue);}
+.ds-fields{display:grid;grid-template-columns:1fr 1fr;gap:.4rem .6rem;}
+.ds-field label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:.2rem;}
+.ds-field input{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:7px;font-family:'Epilogue',sans-serif;font-size:.78rem;color:var(--ink);padding:.35rem .5rem;}
+.ds-field input:focus{outline:none;border-color:var(--blue);}
+.ds-field.full{grid-column:1/-1;}
+.ds-apply-bar{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding-top:.85rem;border-top:1px solid var(--border);}
+.ds-apply-btn{background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;padding:.52rem 1.1rem;cursor:pointer;transition:opacity .14s;}
+.ds-apply-btn:hover{opacity:.85;}
+.ds-apply-btn.secondary{background:var(--surface);color:var(--ink);border:1.5px solid var(--border);}
+.ds-apply-note{font-size:.7rem;color:var(--muted);}
+.ds-day.inactive{opacity:.45;}
+.ds-day.inactive .ds-fields{pointer-events:none;}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 </style>
@@ -746,7 +769,20 @@ nav{background:var(--ink);height:52px;display:flex;align-items:center;justify-co
     <div class="vaclist" id="vacList"></div>
   </div>
 
-  <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:1.1rem 1.25rem;box-shadow:var(--shadow);margin-bottom:1.15rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+  
+<!-- Default schedule panel -->
+<div class="default-sched-panel" id="defaultSchedPanel">
+  <h2>⚙️ Standaard werktijden</h2>
+  <p class="sub">Stel hier de standaard in. Klik "Pas toe op alle medewerkers" om iedereen tegelijk bij te werken. Per medewerker kun je daarna nog overschrijven.</p>
+  <div class="ds-grid" id="dsGrid"></div>
+  <div class="ds-apply-bar">
+    <button class="ds-apply-btn" onclick="applyDefaultSched('all')">✓ Pas toe op alle medewerkers</button>
+    <button class="ds-apply-btn secondary" onclick="applyDefaultSched('new')">Alleen nieuwe medewerkers</button>
+    <span class="ds-apply-note" id="dsApplyNote"></span>
+  </div>
+</div>
+
+<div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:1.1rem 1.25rem;box-shadow:var(--shadow);margin-bottom:1.15rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
   <div>
     <div style="font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700;margin-bottom:.22rem">↓ Importeer medewerkers uit OptimoRoute</div>
     <div style="font-size:.72rem;color:var(--muted)">Haalt automatisch alle chauffeurs/medewerkers op via de API</div>
@@ -976,7 +1012,7 @@ function saveST(quiet=false){
   const local={apiKey:ST.apiKey,clusterMethod:ST.clusterMethod,firebaseUrl:ST.firebaseUrl};
   localStorage.setItem('ps4_local',JSON.stringify(local));
   // Save shared data to Firebase if configured
-  const shared={staff:ST.staff,vacations:ST.vacations};
+  const shared={staff:ST.staff,vacations:ST.vacations,defaultSched:ST.defaultSched||null};
   localStorage.setItem('ps4_shared',JSON.stringify(shared)); // fallback
   if(ST.firebaseUrl)saveToFirebase(shared);
   if(!quiet)showBanner();
@@ -993,6 +1029,7 @@ function loadST(){
     ST.firebaseUrl=local.firebaseUrl||'';
     if(shared.staff)ST.staff=shared.staff;
     if(shared.vacations)ST.vacations=shared.vacations;
+    if(shared.defaultSched)ST.defaultSched=shared.defaultSched;
     // Also try legacy key
     const legacy=JSON.parse(localStorage.getItem('ps4')||'{}');
     if(!ST.staff.length&&legacy.staff)ST.staff=legacy.staff;
@@ -1843,7 +1880,7 @@ async function createOrder(){
 // ══════════════════════════════════════════════
 // STAFF PAGE
 // ══════════════════════════════════════════════
-function renderStaffPage(){renderStaffGrid();renderVacSection();}
+function renderStaffPage(){renderDefaultSchedPanel();renderStaffGrid();renderVacSection();}
 function ensureSched(s){if(!s.schedule)s.schedule={};DAYS.forEach(d=>{if(!s.schedule[d])s.schedule[d]={...DEFAULT_DAY};});}
 function renderStaffGrid(){
   const grid=document.getElementById('staffGrid');grid.innerHTML='';
@@ -1864,7 +1901,9 @@ function makeCard(s){
   </tr>`;}).join('');
   card.innerHTML=`<button class="sdel" onclick="delStaff('${s.id}')">✕</button>
     <div class="shead"><div class="savatar" style="background:${s.color}">${s.name.charAt(0)}</div>
-      <div><div class="sname">${s.name}</div><div class="srole">${s.role||'Medewerker'}</div></div></div>
+      <div style="flex:1"><div class="sname">${s.name}${s._schedCustomized?'<span style="font-size:.58rem;background:var(--abg);color:var(--amber);border-radius:20px;padding:1px 7px;margin-left:.45rem;font-weight:700;vertical-align:middle">Aangepast</span>':''}</div><div class="srole">${s.role||'Medewerker'}</div></div>
+      <button onclick="resetStaffToDefault('${s.id}')" title="Reset naar standaard werktijden" style="background:var(--bg);border:1.5px solid var(--border);border-radius:7px;font-size:.68rem;padding:.28rem .6rem;cursor:pointer;color:var(--muted);white-space:nowrap">↺ Reset</button>
+      </div>
     <div class="scsec"><div class="sclabel">Werkrooster — klik dag om aan/uit te zetten</div>
       <div style="overflow-x:auto"><table class="dsched">
         <thead><tr><th>Dag</th><th>Start</th><th>Einde</th><th>Pauze v</th><th>Pauze t</th><th>Max</th></tr></thead>
@@ -2306,6 +2345,140 @@ function initDayMap(appts, date){
   },150);
 }
 
+
+
+// ══════════════════════════════════════════════
+// DEFAULT SCHEDULE
+// ══════════════════════════════════════════════
+
+// Default schedule state — stored in ST
+const DEFAULT_SCHED_TEMPLATE = {
+  ma:{active:true, start:'08:00',end:'17:00',breakStart:'12:00',breakEnd:'13:00',maxAppts:4},
+  di:{active:true, start:'08:00',end:'17:00',breakStart:'12:00',breakEnd:'13:00',maxAppts:4},
+  wo:{active:true, start:'08:00',end:'17:00',breakStart:'12:00',breakEnd:'13:00',maxAppts:4},
+  do:{active:true, start:'08:00',end:'17:00',breakStart:'12:00',breakEnd:'13:00',maxAppts:4},
+  vr:{active:true, start:'08:00',end:'17:00',breakStart:'12:00',breakEnd:'13:00',maxAppts:4},
+};
+
+function getDefaultSched(){
+  if(!ST.defaultSched){
+    ST.defaultSched={};
+    DAYS.forEach(d=>ST.defaultSched[d]={...DEFAULT_SCHED_TEMPLATE[d]});
+  }
+  return ST.defaultSched;
+}
+
+function renderDefaultSchedPanel(){
+  const ds=getDefaultSched();
+  const grid=document.getElementById('dsGrid');
+  if(!grid)return;
+  grid.innerHTML=DAYS.map(d=>{
+    const sc=ds[d];
+    const dayNames={ma:'Maandag',di:'Dinsdag',wo:'Woensdag',do:'Donderdag',vr:'Vrijdag'};
+    return`<div class="ds-day ${sc.active?'':'inactive'}" id="dsday-${d}">
+      <div class="ds-day-hdr">
+        <span class="ds-day-name">${dayNames[d]}</span>
+        <label class="ds-toggle">
+          <input type="checkbox" ${sc.active?'checked':''} onchange="toggleDsDay('${d}',this.checked)">
+          Werkdag
+        </label>
+      </div>
+      <div class="ds-fields">
+        <div class="ds-field">
+          <label>Starttijd</label>
+          <input type="time" value="${sc.start}" onchange="updDs('${d}','start',this.value)">
+        </div>
+        <div class="ds-field">
+          <label>Eindtijd</label>
+          <input type="time" value="${sc.end}" onchange="updDs('${d}','end',this.value)">
+        </div>
+        <div class="ds-field">
+          <label>Pauze van</label>
+          <input type="time" value="${sc.breakStart}" onchange="updDs('${d}','breakStart',this.value)">
+        </div>
+        <div class="ds-field">
+          <label>Pauze tot</label>
+          <input type="time" value="${sc.breakEnd}" onchange="updDs('${d}','breakEnd',this.value)">
+        </div>
+        <div class="ds-field full">
+          <label>Max afspraken per dag</label>
+          <input type="number" min="1" max="12" value="${sc.maxAppts}" onchange="updDs('${d}','maxAppts',parseInt(this.value)||1)">
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleDsDay(day, active){
+  getDefaultSched()[day].active=active;
+  const card=document.getElementById(`dsday-${day}`);
+  if(card)card.classList.toggle('inactive',!active);
+  saveST(true);
+}
+
+function updDs(day, field, val){
+  getDefaultSched()[day][field]=val;
+  saveST(true);
+}
+
+function applyDefaultSched(mode){
+  const ds=getDefaultSched();
+  const targets = mode==='all'
+    ? ST.staff
+    : ST.staff.filter(s=>!s._schedCustomized);
+
+  if(!targets.length){
+    document.getElementById('dsApplyNote').textContent='Geen medewerkers om bij te werken.';
+    return;
+  }
+
+  targets.forEach(s=>{
+    ensureSched(s);
+    DAYS.forEach(d=>{
+      s.schedule[d]={...ds[d]};
+    });
+    if(mode==='all') s._schedCustomized=false; // reset override flag
+  });
+
+  saveST();
+  renderStaffGrid();
+
+  const note=document.getElementById('dsApplyNote');
+  note.textContent=`✓ Toegepast op ${targets.length} medewerker${targets.length>1?'s':''}`;
+  note.style.color='var(--green)';
+  setTimeout(()=>{note.textContent='';},3000);
+}
+
+// ── Copy schedule from one day to others ──
+function copyDayToAll(sourceDay){
+  const ds=getDefaultSched();
+  const src=ds[sourceDay];
+  DAYS.forEach(d=>{
+    if(d!==sourceDay) ds[d]={...src};
+  });
+  saveST(true);
+  renderDefaultSchedPanel();
+  renderStaffPage();
+}
+
+// ── Per-staff "Reset naar standaard" knop ──
+function resetStaffToDefault(sid){
+  const s=ST.staff.find(x=>x.id===sid);
+  if(!s)return;
+  const ds=getDefaultSched();
+  ensureSched(s);
+  DAYS.forEach(d=>{ s.schedule[d]={...ds[d]}; });
+  s._schedCustomized=false;
+  saveST();
+  renderStaffGrid();
+}
+
+// ── Mark staff as customized when they change a field ──
+function updSchedAndMark(sid,day,field,val){
+  updSched(sid,day,field,val);
+  const s=ST.staff.find(x=>x.id===sid);
+  if(s) s._schedCustomized=true;
+}
 
 </script>
 <!-- DEBUG PANEL -->
